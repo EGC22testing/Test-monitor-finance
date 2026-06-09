@@ -750,6 +750,208 @@ function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12
 function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();}
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
+
+// ── COTAÇÕES EM TEMPO REAL ──────────────────────────────
+const CART = {
+  NVDA:        {qtd:0.49003, pm:103.21, m:'USD', id:'nvda'},
+  AMZN:        {qtd:0.20138, pm:173.67, m:'USD', id:'amzn'},
+  TSLA:        {qtd:0.18789, pm:279.46, m:'USD', id:'tsla'},
+  LMT:         {qtd:0.3126,  pm:479.75, m:'USD', id:'lmt'},
+  NU:          {qtd:2.0,     pm:8.51,   m:'USD', id:'nu'},
+  REGN:        {qtd:0.3929,  pm:534.66, m:'USD', id:'regn'},
+  TSM:         {qtd:0.03386, pm:295.25, m:'USD', id:'tsm'},
+  IAU:         {qtd:1.00191, pm:59.86,  m:'USD', id:'iau'},
+  'WEGE3.SA':  {qtd:20,      pm:40.34,  m:'BRL', id:'wege3'},
+  'ITSA4.SA':  {qtd:100,     pm:9.54,   m:'BRL', id:'itsa4'},
+  'TAEE11.SA': {qtd:10,      pm:35.89,  m:'BRL', id:'taee11'},
+};
+let QT={}, rtDolar=5.009, rtTimer=60, rtInterval=null;
+
+function fU(v){return 'US$ '+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fB(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fn(v,d=2){return typeof v==='number'?v.toFixed(d):'N/D';}
+function setEl(id,txt){const e=document.getElementById(id);if(e)e.textContent=txt;}
+
+// Tenta Yahoo Finance via múltiplos proxies CORS
+async function fetchProxy(url){
+  const proxies=[
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://cors-anywhere.herokuapp.com/${url}`,
+  ];
+  for(const proxy of proxies){
+    try{
+      const r=await fetch(proxy,{signal:AbortSignal.timeout(8000)});
+      if(!r.ok) continue;
+      const j=await r.json();
+      // allorigins retorna {contents:...}, corsproxy retorna diretamente
+      const raw=j.contents||j;
+      const parsed=typeof raw==='string'?JSON.parse(raw):raw;
+      return parsed;
+    }catch(e){ continue; }
+  }
+  return null;
+}
+
+async function fetchRT(){
+  setStatus('⏳ Buscando cotações...','#888');
+  const syms=[...Object.keys(CART),'BRL=X'].join(',');
+  const url=`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${syms}&range=1d&interval=1d`;
+  const url2=`https://query2.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChangePercent,currency`;
+
+  let data=null;
+
+  // Tenta API v7 (mais completa)
+  try{
+    data=await fetchProxy(url2);
+    if(data?.quoteResponse?.result?.length){
+      data.quoteResponse.result.forEach(q=>{QT[q.symbol]=q;});
+      if(QT['BRL=X']) rtDolar=QT['BRL=X'].regularMarketPrice||5.009;
+      renderRT();
+      startCountdown();
+      setStatus(`✅ Atualizado às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · próxima em <span id="rt-countdown">60</span>s`,'#27ae60');
+      return;
+    }
+  }catch(e){}
+
+  // Fallback: tenta Brapi para ativos BR e Yahoo v1 para EUA
+  try{
+    const brapiSyms=Object.keys(CART).filter(s=>s.includes('.SA')).map(s=>s.replace('.SA','')).join(',');
+    const brapiUrl=`https://brapi.dev/api/quote/${brapiSyms}`;
+    const brapiData=await fetchProxy(brapiUrl);
+    if(brapiData?.results){
+      brapiData.results.forEach(q=>{
+        QT[q.symbol+'.SA']={
+          regularMarketPrice:q.regularMarketPrice,
+          regularMarketChangePercent:q.regularMarketChangePercent
+        };
+      });
+    }
+
+    // Yahoo para EUA
+    const euaSyms=Object.keys(CART).filter(s=>!s.includes('.SA')).join(',');
+    const euaUrl=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${euaSyms}&fields=regularMarketPrice,regularMarketChangePercent`;
+    const euaData=await fetchProxy(euaUrl);
+    if(euaData?.quoteResponse?.result){
+      euaData.quoteResponse.result.forEach(q=>{QT[q.symbol]=q;});
+    }
+
+    if(Object.keys(QT).length>0){
+      renderRT();
+      startCountdown();
+      setStatus(`✅ Atualizado às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})} · próxima em <span id="rt-countdown">60</span>s`,'#27ae60');
+      return;
+    }
+  }catch(e){}
+
+  setStatus('⚠️ Não foi possível buscar cotações. Verifique sua conexão.','#e74c3c');
+}
+
+function setStatus(html,color){
+  const el=document.getElementById('rt-ts');
+  if(!el) return;
+  el.innerHTML=html;
+  el.style.color=color||'#888';
+}
+
+function startCountdown(){
+  if(rtInterval) clearInterval(rtInterval);
+  rtTimer=60;
+  rtInterval=setInterval(()=>{
+    rtTimer--;
+    const cd=document.getElementById('rt-countdown');
+    if(cd) cd.textContent=rtTimer;
+    if(rtTimer<=0){ clearInterval(rtInterval); fetchRT(); }
+  },1000);
+}
+
+function renderRT(){
+  let totEUA_pos=0,totEUA_cst=0,totBR_pos=0,totBR_cst=0;
+  Object.entries(CART).forEach(([sym,info])=>{
+    const q=QT[sym]; if(!q) return;
+    const p=q.regularMarketPrice, vp=q.regularMarketChangePercent||0;
+    const pos=p*info.qtd, cst=info.pm*info.qtd, res=pos-cst, pct=((pos-cst)/cst)*100;
+    // Header do card
+    const ativo=document.querySelector('[id="c-'+info.id+'"]')?.closest('.ativo');
+    if(ativo){
+      const prEl=ativo.querySelector('.pr');
+      if(prEl) prEl.textContent=info.m==='USD'?fU(p):fB(p);
+      const vbEl=ativo.querySelector('.vb');
+      if(vbEl){vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia';vbEl.className='vb '+(vp>=0?'vp':'vn');}
+      const rsEl=ativo.querySelector('.res');
+      if(rsEl){rsEl.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res));rsEl.className='res '+(res>=0?'pos':'neg');}
+    }
+    // Detalhes internos
+    const det=document.getElementById(info.id);
+    if(det){
+      det.querySelectorAll('.kv').forEach(kv=>{
+        const k=kv.querySelector('.kk'),v=kv.querySelector('.vv');
+        if(!k||!v) return;
+        const kt=k.textContent.trim();
+        if(kt==='Posição atual') v.textContent=info.m==='USD'?fU(pos):fB(pos);
+        if(kt==='Resultado')     v.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res))+' ('+(pct>=0?'+':'')+fn(pct)+'%)';
+        if(kt==='Preço hoje')    v.textContent=info.m==='USD'?fU(p):fB(p);
+        if(kt==='Var. dia')      v.textContent=(vp>=0?'+':'')+fn(vp)+'%';
+      });
+    }
+    if(info.m==='USD'){totEUA_pos+=pos;totEUA_cst+=cst;}
+    else{totBR_pos+=pos;totBR_cst+=cst;}
+  });
+
+  // Totais
+  const rEUA=totEUA_pos-totEUA_cst, pEUA=(rEUA/totEUA_cst)*100;
+  setEl('rt-eua-pos',fU(totEUA_pos)); setEl('rt-eua-res','+'+fU(rEUA)); setEl('rt-eua-pct','+'+fn(pEUA)+'%');
+  const rBR=totBR_pos-totBR_cst, pBR=(rBR/totBR_cst)*100;
+  setEl('rt-br-pos',fB(totBR_pos)); setEl('rt-br-res','+'+fB(rBR)); setEl('rt-br-pct','+'+fn(pBR)+'%');
+  const euaBRL=totEUA_pos*rtDolar, pat=euaBRL+totBR_pos;
+  const custoT=totEUA_cst*rtDolar+totBR_cst, rT=pat-custoT, pT=(rT/custoT)*100;
+  setEl('rt-cons-pat',fB(pat)); setEl('rt-cons-res','+'+fB(rT)); setEl('rt-cons-pct','+'+fn(pT)+'%');
+  setEl('rt-cons-eua',fU(totEUA_pos)); setEl('rt-cons-br',fB(totBR_pos));
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  // IDs nas métricas
+  document.querySelectorAll('#p-consolidado .mc').forEach(mc=>{
+    const lbl=mc.querySelector('.mc-l'),val=mc.querySelector('.mc-v');
+    if(!lbl||!val) return;
+    const t=lbl.textContent.trim();
+    if(t==='Total em BRL')   val.id='rt-cons-pat';
+    else if(t==='Resultado'&&!val.id) val.id='rt-cons-res';
+    else if(t==='Resultado %'&&!val.id) val.id='rt-cons-pct';
+    else if(t==='Carteira EUA') val.id='rt-cons-eua';
+    else if(t==='Carteira BR')  val.id='rt-cons-br';
+  });
+  document.querySelectorAll('#p-eua .mc').forEach(mc=>{
+    const lbl=mc.querySelector('.mc-l'),val=mc.querySelector('.mc-v');
+    if(!lbl||!val) return;
+    const t=lbl.textContent.trim();
+    if(t==='Posição atual') val.id='rt-eua-pos';
+    else if(t==='Resultado'&&!val.id) val.id='rt-eua-res';
+    else if(t==='Resultado %'&&!val.id) val.id='rt-eua-pct';
+  });
+  document.querySelectorAll('#p-br .mc').forEach(mc=>{
+    const lbl=mc.querySelector('.mc-l'),val=mc.querySelector('.mc-v');
+    if(!lbl||!val) return;
+    const t=lbl.textContent.trim();
+    if(t==='Posição atual') val.id='rt-br-pos';
+    else if(t==='Resultado'&&!val.id) val.id='rt-br-res';
+    else if(t==='Resultado %'&&!val.id) val.id='rt-br-pct';
+  });
+
+  // Badge de status
+  const sub=document.querySelector('.sub');
+  if(sub && !document.getElementById('rt-ts')){
+    const ts=document.createElement('div');
+    ts.id='rt-ts';
+    ts.style.cssText='font-size:11px;color:#888;margin-top:3px;';
+    ts.textContent='⏳ Conectando...';
+    sub.after(ts);
+  }
+
+  fetchRT();
+});
+// ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
+
 </script>
 </body>
 </html>
