@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="cache-control" content="no-cache,no-store,must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitor Financeiro v3 — 09/06/2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;font-size:14px;background:#f5f5f0;color:#1a1a1a;padding:1.2rem}
+.header-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.2rem;gap:8px;flex-wrap:wrap}
+h1{font-size:19px;font-weight:600;margin-bottom:2px}
+.sub{font-size:11px;color:#888}
+.btn-hide{display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #ddd;background:#fff;color:#555}
+.btn-hide:hover{background:#f0f0ee}
+.tabs{display:flex;gap:7px;margin-bottom:1.2rem;flex-wrap:wrap}
+.tab{padding:6px 16px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid #ddd;background:#fff;color:#666}
+.tab.on{background:#534AB7;color:#fff;border-color:#534AB7}
+.panel{display:none}.panel.on{display:block}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-bottom:1.2rem}
+.mc{background:#fff;border-radius:10px;padding:11px 13px;border:1px solid #eee}
+.mc-l{font-size:10px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.mc-v{font-size:17px;font-weight:600}
+.mc-s{font-size:10px;margin-top:2px}
+.pos{color:#27ae60}.neg{color:#e74c3c}.neu{color:#888}
+.sec{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:1.2rem 0 .6rem}
+.mkt-status{display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:10px;margin-bottom:.9rem;font-size:12px;font-weight:500;border:1px solid}
+.mkt-open{background:#e1f5ee;border-color:#a5d6a7;color:#1b5e20}
+.mkt-closed{background:#fafafa;border-color:#e0e0e0;color:#555}
+.mkt-pre{background:#fff8e1;border-color:#ffe082;color:#5f4300}
+.mkt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-open{background:#27ae60;animation:pulse 1.5s infinite}
+.dot-closed{background:#bbb}
+.dot-pre{background:#f9a825}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px #a5d6a7}50%{box-shadow:0 0 0 6px #c8e6c9}}
+.mkt-detail{font-size:10px;font-weight:400;opacity:.8}
+.macro-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:7px;margin-bottom:1.2rem}
+.mac{background:#fff;border:1px solid #eee;border-radius:9px;padding:9px 11px;text-align:center}
+.mac-l{font-size:10px;color:#888;margin-bottom:2px}
+.mac-v{font-size:14px;font-weight:600}
+.mac-s{font-size:10px;margin-top:2px}
+.ativo{background:#fff;border:1px solid #eee;border-radius:11px;margin-bottom:7px;overflow:hidden}
+.ah{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;gap:6px;flex-wrap:wrap}
+.ah:hover{background:#fafafa}
+.aleft{display:flex;align-items:center;gap:9px}
+.tb{font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px;background:#f0f0ee;min-width:60px;text-align:center}
+.an{font-size:12px;font-weight:600}.as{font-size:10px;color:#888}
+.aright{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pr{font-size:13px;font-weight:600}.pm{font-size:10px;color:#888}
+.vb{font-size:11px;padding:2px 7px;border-radius:20px;font-weight:600}
+.vp{background:#eaf3de;color:#27500a}.vn{background:#fcebeb;color:#791f1f}
+.res{font-size:12px;font-weight:600}
+.chev{font-size:12px;color:#bbb;transition:transform .2s;flex-shrink:0}
+.det{display:none;border-top:1px solid #eee}
+.det.op{display:block}
+.dg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.dc{padding:12px 14px;border-right:1px solid #eee}
+.dc:last-child{border-right:none}
+.ds{font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.kv{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f3f3f0}
+.kv:last-child{border:none}
+.kk{color:#888;flex-shrink:0;margin-right:6px}.vv{font-weight:600;text-align:right}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;margin-top:5px}
+.pbuy{background:#e1f5ee;color:#085041}
+.phold{background:#faeeda;color:#633806}
+.vtxt{margin-top:7px;font-size:11px;line-height:1.6;color:#666}
+.news-section{background:#fff;border:1px solid #eee;border-radius:11px;padding:13px 15px;margin-bottom:10px}
+.news-title{font-size:12px;font-weight:700;margin-bottom:10px}
+.news-item{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid #f3f3f0;align-items:flex-start}
+.news-item:last-child{border:none}
+.news-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.nb-pos{background:#eaf3de;color:#27500a}.nb-neg{background:#fcebeb;color:#791f1f}
+.nb-neu{background:#f0f0ee;color:#555}.nb-info{background:#e6f1fb;color:#0c447c}
+.news-text{font-size:11px;line-height:1.5;color:#333}
+.news-date{font-size:10px;color:#aaa;margin-top:2px}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{text-align:left;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;color:#888;border-bottom:1px solid #eee}
+.tbl td{padding:7px 9px;border-bottom:1px solid #f3f3f0}
+.tbl tr:last-child td{border:none}
+.tbl tr:hover td{background:#fafafa}
+.fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.2rem}
+.fin-form{background:#fff;border:1px solid #eee;border-radius:11px;padding:14px}
+.fin-form h3{font-size:12px;font-weight:700;margin-bottom:10px}
+.fin-input{width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:7px;font-size:12px;margin-bottom:7px;font-family:inherit;background:#fafafa}
+.fin-input:focus{outline:none;border-color:#534AB7;background:#fff}
+.fin-select{width:100%;padding:7px 9px;border:1px solid #ddd;border-radius:7px;font-size:12px;margin-bottom:7px;font-family:inherit;background:#fafafa;cursor:pointer}
+.fin-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.btn-add{width:100%;padding:8px;border-radius:7px;border:none;background:#534AB7;color:#fff;font-size:12px;font-weight:600;cursor:pointer;margin-top:3px}
+.btn-add:hover{background:#3d3694}
+.btn-add.rec{background:#27ae60}.btn-add.rec:hover{background:#1e8449}
+.lancamentos{background:#fff;border:1px solid #eee;border-radius:11px;overflow:hidden;margin-bottom:10px}
+.lanc-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #eee;flex-wrap:wrap;gap:6px}
+.lanc-title{font-size:12px;font-weight:700}
+.lanc-filters{display:flex;gap:5px;flex-wrap:wrap}
+.lanc-filter{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid #ddd;background:#fff;color:#666}
+.lanc-filter.on{background:#534AB7;color:#fff;border-color:#534AB7}
+.lanc-item{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #f3f3f0;gap:7px;flex-wrap:wrap}
+.lanc-item:last-child{border:none}
+.lanc-item:hover{background:#fafafa}
+.lanc-left{display:flex;align-items:center;gap:8px}
+.lanc-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.icon-rec{background:#e1f5ee}.icon-pag{background:#fcebeb}
+.lanc-desc{font-size:12px;font-weight:600}
+.lanc-cat{font-size:10px;color:#888;margin-top:1px}
+.lanc-right{display:flex;align-items:center;gap:8px}
+.lanc-val{font-size:13px;font-weight:700}
+.lanc-date{font-size:10px;color:#aaa}
+.lanc-status{font-size:10px;padding:2px 6px;border-radius:20px;font-weight:600}
+.st-pago{background:#eaf3de;color:#27500a}
+.st-pend{background:#faeeda;color:#633806}
+.st-atrs{background:#fcebeb;color:#791f1f}
+.btn-del{background:none;border:none;cursor:pointer;color:#ddd;font-size:13px;padding:1px 3px}
+.btn-del:hover{color:#e74c3c}
+.resumo-mes{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.2rem}
+.rm{background:#fff;border-radius:10px;padding:11px 13px;border:1px solid #eee;text-align:center}
+.rm-l{font-size:10px;color:#888;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.rm-v{font-size:16px;font-weight:700}
+.mes-nav{display:flex;align-items:center;gap:10px;margin-bottom:.9rem}
+.mes-btn{background:#fff;border:1px solid #ddd;border-radius:7px;padding:4px 11px;cursor:pointer;font-size:12px}
+.mes-label{font-size:14px;font-weight:600;min-width:130px;text-align:center}
+.empty-state{text-align:center;padding:1.5rem;color:#aaa;font-size:12px}
+.hidden-val{filter:blur(5px);user-select:none;pointer-events:none;transition:filter .2s}
+.aviso{background:#e1f5ee;border:1px solid #a5d6a7;border-radius:10px;padding:9px 13px;font-size:11px;color:#1b5e20;margin-top:10px;line-height:1.6}
+.badge-live{display:inline-block;background:#27ae60;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
+.badge-date{display:inline-block;background:#534AB7;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:4px;vertical-align:middle}
+@media(max-width:580px){.dg{grid-template-columns:1fr}.dc{border-right:none;border-bottom:1px solid #eee}.dc:last-child{border-bottom:none}.fin-grid{grid-template-columns:1fr}.fin-row{grid-template-columns:1fr}.aright{gap:6px}}
+</style>
+</head>
+<body>
+
+<div class="header-row">
+  <div>
+    <h1>📊 Monitor Financeiro <span class="badge-live">AO VIVO</span><span class="badge-date">09/06/2026</span></h1>
+    <div class="sub">Preços: fechamento 06/06/2026 · Domingo — mercados fechados · Próxima abertura: segunda 09:30 ET / 10:00 BRT</div>
+  </div>
+  <button class="btn-hide" onclick="toggleValues()" id="btn-hide-vals">
+    <span id="eye-txt">👁</span>
+    <span id="hide-label">Ocultar valores</span>
+  </button>
+</div>
+
+<div class="tabs">
+  <div class="tab on" onclick="st('consolidado',this)">Consolidado</div>
+  <div class="tab" onclick="st('eua',this)">Carteira EUA</div>
+  <div class="tab" onclick="st('br',this)">Carteira Brasil</div>
+  <div class="tab" onclick="st('analise',this)">Análise & Score</div>
+  <div class="tab" onclick="st('financas',this)">💰 Finanças Pessoais</div>
+</div>
+
+<!-- ═══════════════ CONSOLIDADO ═══════════════ -->
+<div id="p-consolidado" class="panel on">
+  <div class="sec">Patrimônio consolidado — fechamento 06/06/2026</div>
+  <div class="mgrid">
+    <div class="mc"><div class="mc-l">Total em BRL</div><div class="mc-v">R$ 6.417,98</div><div class="mc-s neu">câmbio R$5,009</div></div>
+    <div class="mc"><div class="mc-l">Custo total</div><div class="mc-v">R$ 5.144,73</div></div>
+    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 1.272,19</div></div>
+    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+29,6%</div></div>
+    <div class="mc"><div class="mc-l">Carteira EUA</div><div class="mc-v">US$ 758,55</div><div class="mc-s pos">+29,9% · 59,2% do total</div></div>
+    <div class="mc"><div class="mc-l">Carteira BR</div><div class="mc-v">R$ 2.618,40</div><div class="mc-s pos">+18,2% · 40,8% do total</div></div>
+  </div>
+
+  <div class="sec">Indicadores macro — última atualização 06/06/2026</div>
+  <div class="macro-row">
+    <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.473</div><div class="mac-s pos">+0,37% sex</div></div>
+    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">26.334</div><div class="mac-s pos">+0,16% sex</div></div>
+    <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">174.197</div><div class="mac-s pos">+1,16% qui</div></div>
+    <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,009</div><div class="mac-s pos">-8,7% no ano</div></div>
+    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,5%</div><div class="mac-s neg">Em queda gradual</div></div>
+    <div class="mac"><div class="mac-l">IPCA 2026E</div><div class="mac-v">5,09%</div><div class="mac-s neg">Acima do teto</div></div>
+    <div class="mac"><div class="mac-l">IAU/Ouro</div><div class="mac-v">US$ 85,22</div><div class="mac-s pos">+42,4% vs PM</div></div>
+  </div>
+
+  <div class="ativo">
+    <div style="padding:12px 14px">
+      <div class="ds" style="margin-bottom:10px">Todos os ativos — fechamento 06/06/2026</div>
+      <table class="tbl">
+        <thead><tr><th>Ativo</th><th>Mercado</th><th>Preço</th><th>Var. dia</th><th>Custo</th><th>Posição</th><th>Resultado</th><th>%</th></tr></thead>
+        <tbody>
+          <tr><td><strong>NVDA</strong></td><td>EUA</td><td>US$ 208,14</td><td class="pos">+2,0%</td><td>$50,58</td><td>$101,99</td><td class="pos">+$51,41</td><td class="pos">+101,7%</td></tr>
+          <tr><td><strong>REGN</strong></td><td>EUA</td><td>US$ 632,05</td><td class="neg">-1,2%</td><td>$210,07</td><td>$248,33</td><td class="pos">+$38,26</td><td class="pos">+18,2%</td></tr>
+          <tr><td><strong>IAU</strong></td><td>EUA</td><td>US$ 81,68</td><td class="neg">-4,2%</td><td>$59,97</td><td>$81,84</td><td class="pos">+$21,87</td><td class="pos">+36,5%</td></tr>
+          <tr><td><strong>TSLA</strong></td><td>EUA</td><td>US$ 408,87</td><td class="pos">+4,5%</td><td>$52,51</td><td>$76,82</td><td class="pos">+$24,31</td><td class="pos">+46,3%</td></tr>
+          <tr><td><strong>LMT</strong></td><td>EUA</td><td>US$ 519,16</td><td class="neg">-0,3%</td><td>$149,97</td><td>$162,29</td><td class="pos">+$12,32</td><td class="pos">+8,2%</td></tr>
+          <tr><td><strong>AMZN</strong></td><td>EUA</td><td>US$ 244,98</td><td class="neg">-0,3%</td><td>$34,97</td><td>$49,33</td><td class="pos">+$14,36</td><td class="pos">+41,1%</td></tr>
+          <tr><td><strong>NU</strong></td><td>EUA</td><td>US$ 11,71</td><td class="neg">-2,3%</td><td>$17,02</td><td>$23,42</td><td class="pos">+$6,40</td><td class="pos">+37,6%</td></tr>
+          <tr><td><strong>TSM</strong></td><td>EUA</td><td>US$ 428,89</td><td class="pos">+3,3%</td><td>$10,00</td><td>$14,52</td><td class="pos">+$4,52</td><td class="pos">+45,3%</td></tr>
+          <tr><td><strong>ITSA4</strong></td><td>BR</td><td>R$ 12,72</td><td class="neu">—</td><td>R$1.049,40</td><td>R$1.399,20</td><td class="pos">+R$349,80</td><td class="pos">+33,3%</td></tr>
+          <tr><td><strong>TAEE11</strong></td><td>BR</td><td>R$ 38,90</td><td class="neu">—</td><td>R$358,90</td><td>R$389,00</td><td class="pos">+R$30,10</td><td class="pos">+8,4%</td></tr>
+          <tr><td><strong>WEGE3</strong></td><td>BR</td><td>R$ 41,51</td><td class="neu">—</td><td>R$806,80</td><td>R$830,20</td><td class="pos">+R$23,40</td><td class="pos">+2,9%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ EUA ═══════════════ -->
+<div id="p-eua" class="panel">
+  <div id="status-eua" class="mkt-status mkt-closed">
+    <div id="dot-eua" class="mkt-dot dot-closed"></div>
+    <span id="txt-eua">Verificando status...</span>
+  </div>
+
+  <div class="sec">Mercado EUA — semana de 02 a 06/06/2026</div>
+  <div class="macro-row">
+    <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.473</div><div class="mac-s pos">+0,37% sex</div></div>
+    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">26.334</div><div class="mac-s pos">+0,16% sex</div></div>
+    <div class="mac"><div class="mac-l">USD/BRL</div><div class="mac-v">R$ 5,009</div><div class="mac-s pos">-8,7% no ano</div></div>
+    <div class="mac"><div class="mac-l">NVDA target</div><div class="mac-v">US$298</div><div class="mac-s pos">+46% upside</div></div>
+    <div class="mac"><div class="mac-l">VIX</div><div class="mac-v">16,79</div><div class="mac-s neu">Medo baixo</div></div>
+  </div>
+
+  <div class="news-section">
+    <div class="news-title">📰 Destaques da semana — seus ativos EUA</div>
+    <div class="news-item">
+      <span class="news-badge nb-neg">NVDA -1,5%</span>
+      <div><div class="news-text">Semana pressionada por sell-off em chips após resultados da Broadcom. Mas NVDA recuperou +1,7% na sexta. Revenue FY26: US$215,9bi (+65%). Target médio dos analistas: US$298,42 (+46% de upside). Próximo earnings: 26/08/2026. ATH: US$236,54 (mai/26).</div><div class="news-date">06/06/2026 — StockAnalysis / Robinhood</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-neg">REGN -11,1%</span>
+      <div><div class="news-text">Maior queda da carteira na semana. Preço caiu de ~US$765 para US$639. P/E agora em 15,32x — um dos mais baixos em anos para a Regeneron. Dupixent segue crescendo. Expansão para hipertensão pulmonar (Fase 2) e câncer de próstata (CAR-T Fase 1). Target médio: US$841 (+31% de upside). Oportunidade de acompanhar de perto.</div><div class="news-date">05–06/06/2026 — Robinhood / StockAnalysis</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-neg">TSLA -7,9%</span>
+      <div><div class="news-text">Recuperou +3,5% na sexta após semana difícil. JPMorgan, Erste Group e Barclays emitiram upgrades na semana. Vendas globais de EVs subiram 16% em abril lideradas por Tesla. 2026 é ano de base — crescimento acelerado projetado para 2027+. Posição ainda +40% de resultado.</div><div class="news-date">06/06/2026 — CNN / TipRanks</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-neg">TSM -6,7%</span>
+      <div><div class="news-text">CEO C.C. Wei alertou que gap de oferta de chips de IA persistirá por anos — paradoxalmente bullish para longo prazo. Dividendo US$0,955 com ex-date 11/06/2026. Market cap: US$1,95 trilhão (+139% em 12 meses). Target: US$467,84 (+12,7%).</div><div class="news-date">04–06/06/2026 — Yahoo Finance / Investing.com</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-pos">NU — Buyback $1bi</span>
+      <div><div class="news-text">Nu Holdings próxima ao suporte técnico de US$11,80–12,00. Buyback de US$1bi anunciado em 04/06 é sinal positivo. EPS Q1: $0,18 (miss de 10%), mas receita recorde de US$5bi com lucro líquido +41% A/A. Próximo earnings: 18/08/2026. Target médio: US$18,48 (+54% de upside).</div><div class="news-date">04–06/06/2026 — Investing.com / TipRanks</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-neg">AMZN -1,0%</span>
+      <div><div class="news-text">Acumula -7,7% no ano. Mercado digere capex de US$200bi para IA. AWS cresceu 17% A/A. Prime Day retorna em 23/06 — 4 dias, evento mais cedo que o usual. Target médio: US$312 (+27% de upside). Cathie Wood comprou na queda recente.</div><div class="news-date">06/06/2026 — Robinhood / Nasdaq</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-pos">LMT +0,2% / IAU +0,5%</span>
+      <div><div class="news-text">LMT segue resiliente: contrato de US$879M firmado, dividendo Q2 de US$3,45/ação. IAU em US$85,22, +42% desde o PM da carteira. Ouro recuou com alívio geopolítico EUA-Irã mas mantém tendência de alta estrutural.</div><div class="news-date">06/06/2026</div></div>
+    </div>
+  </div>
+
+  <div class="sec">Posições EUA — fechamento 06/06/2026</div>
+  <div class="mgrid">
+    <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">US$ 585,09</div></div>
+    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">US$ 758,55</div></div>
+    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+US$ 173,46</div></div>
+    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+24,9%</div></div>
+  </div>
+
+  <!-- Cards individuais EUA -->
+  <div class="ativo">
+    <div class="ah" onclick="tg('nvda')">
+      <div class="aleft"><div class="tb">NVDA</div><div><div class="an">NVIDIA Corporation</div><div class="as">Semicondutores / IA — NASDAQ</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 208,14</div><div class="pm">0,49 ações · PM US$103,21</div></div><span class="vb vp">+2,0% dia</span><div class="res pos">+US$ 51,41</div><span class="chev" id="c-nvda">▼</span></div>
+    </div>
+    <div class="det" id="nvda">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,49003</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 103,21</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 50,58</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 101,99</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+51,41 (+101,7%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">P/L forward</span><span class="vv pos">24,5x — menor em 3 anos</span></div>
+          <div class="kv"><span class="kk">Revenue FY26</span><span class="vv pos">US$215,9bi (+65%)</span></div>
+          <div class="kv"><span class="kk">Target analistas</span><span class="vv pos">US$298 (+46% upside)</span></div>
+          <div class="kv"><span class="kk">Rating (62 analistas)</span><span class="vv pos">Strong Buy</span></div>
+          <div class="kv"><span class="kk">ATH 52w</span><span class="vv">US$236,54 (mai/26)</span></div>
+          <div class="kv"><span class="kk">Próx. earnings</span><span class="vv">26/08/2026</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter — forte</span>
+          <div class="vtxt">Queda da semana foi técnica (sell-off Broadcom). Fundamentos intactos. +97,7% sobre seu PM. Aguardar recuo para US$190–200 para aportar mais.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('amzn')">
+      <div class="aleft"><div class="tb">AMZN</div><div><div class="an">Amazon.com Inc.</div><div class="as">Cloud / E-commerce / IA — NASDAQ</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 244,98</div><div class="pm">0,20 ações · PM US$173,67</div></div><span class="vb vn">-0,3% dia</span><div class="res pos">+US$ 14,36</div><span class="chev" id="c-amzn">▼</span></div>
+    </div>
+    <div class="det" id="amzn">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,20138</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 173,67</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 34,97</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 49,33</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+14,36 (+41,1%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">AWS crescimento</span><span class="vv pos">+17% A/A (Q1/26)</span></div>
+          <div class="kv"><span class="kk">CapEx IA 2026</span><span class="vv pos">US$200bi</span></div>
+          <div class="kv"><span class="kk">Prime Day</span><span class="vv pos">23-26/06/2026</span></div>
+          <div class="kv"><span class="kk">Target</span><span class="vv pos">US$312 (+27% upside)</span></div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$196 – $278</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter — excelente</span>
+          <div class="vtxt">AWS + IA + Anthropic. Queda por digestão do capex é normal. Prime Day em 23/06 é catalisador próximo. Target de US$312 representa +27% do preço atual.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('tsla')">
+      <div class="aleft"><div class="tb">TSLA</div><div><div class="an">Tesla Inc.</div><div class="as">EVs / Energia / Autonomia — NASDAQ</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 408,87</div><div class="pm">0,19 ações · PM US$279,46</div></div><span class="vb vp">+4,5% dia</span><div class="res pos">+US$ 24,31</div><span class="chev" id="c-tsla">▼</span></div>
+    </div>
+    <div class="det" id="tsla">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,18789</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 279,46</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 52,51</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 76,82</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+24,31 (+46,3%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$281 – $498</span></div>
+          <div class="kv"><span class="kk">Upgrades semana</span><span class="vv pos">JPMorgan, Erste, Barclays</span></div>
+          <div class="kv"><span class="kk">EVs global abr/26</span><span class="vv pos">+16% (Tesla lidera)</span></div>
+          <div class="kv"><span class="kk">Recuperação sex</span><span class="vv pos">+3,5%</span></div>
+          <div class="kv"><span class="kk">Tese</span><span class="vv neu">2027+ crescimento</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill phold">Manter — monitorar</span>
+          <div class="vtxt">Semana difícil mas 3 upgrades reforçam tese de longo prazo. 2026 é ano de base — crescimento real em 2027+. Posição ainda +40% de resultado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('lmt')">
+      <div class="aleft"><div class="tb">LMT</div><div><div class="an">Lockheed Martin Corp.</div><div class="as">Defesa / Aeroespacial — NYSE</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 519,16</div><div class="pm">0,31 ações · PM US$479,75</div></div><span class="vb vn">-0,3% dia</span><div class="res pos">+US$ 12,32</div><span class="chev" id="c-lmt">▼</span></div>
+    </div>
+    <div class="det" id="lmt">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,3126</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 479,75</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 149,97</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 162,29</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+12,32 (+8,2%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$410 – $692</span></div>
+          <div class="kv"><span class="kk">Dividendo Q2/26</span><span class="vv pos">US$3,45/ação</span></div>
+          <div class="kv"><span class="kk">Contrato recente</span><span class="vv pos">US$879M</span></div>
+          <div class="kv"><span class="kk">DY estimado</span><span class="vv pos">~2,7% a.a.</span></div>
+          <div class="kv"><span class="kk">Beta</span><span class="vv pos">-0,16 (defensivo)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter — defensivo</span>
+          <div class="vtxt">Ativo mais estável da carteira EUA. Beta negativo significa que sobe quando o mercado cai. Dividendo Q2 de US$3,45/ação aprovado. Excelente âncora para B&H.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('iau')">
+      <div class="aleft"><div class="tb">IAU</div><div><div class="an">iShares Gold Trust</div><div class="as">Ouro / Hedge cambial — NYSE</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 81,68</div><div class="pm">1,00 cota · PM US$59,86</div></div><span class="vb vn">-4,2% dia</span><div class="res pos">+US$ 21,87</div><span class="chev" id="c-iau">▼</span></div>
+    </div>
+    <div class="det" id="iau">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">1,00191</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 59,86</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 59,97</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 81,84</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+21,87 (+36,5%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">NAV (04/06)</span><span class="vv">US$ 84,59</span></div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$61,69 – $101,77</span></div>
+          <div class="kv"><span class="kk">12 meses</span><span class="vv pos">+38,1%</span></div>
+          <div class="kv"><span class="kk">Correlação tech</span><span class="vv pos">Baixa — hedge ideal</span></div>
+          <div class="kv"><span class="kk">Expense ratio</span><span class="vv">0,25%</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter forte</span>
+          <div class="vtxt">Único ativo que subiu na sexta (+0,5%). Melhor hedge cambial e de risco da carteira. Com US$46 disponíveis: IAU a ~US$85 é quase 1 cota — opção mais segura para o aporte.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('nu')">
+      <div class="aleft"><div class="tb">NU</div><div><div class="an">Nu Holdings Ltd.</div><div class="as">Fintech / Banco Digital — NYSE</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 11,71</div><div class="pm">2 ações · PM US$8,51</div></div><span class="vb vn">-2,3% dia</span><div class="res pos">+US$ 6,40</div><span class="chev" id="c-nu">▼</span></div>
+    </div>
+    <div class="det" id="nu">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">2 ações</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 8,51</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 17,02</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 23,42</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+6,40 (+37,6%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">ATH (jan/26)</span><span class="vv neg">US$18,98 (-36%)</span></div>
+          <div class="kv"><span class="kk">52w low</span><span class="vv neg">US$11,20 (suporte)</span></div>
+          <div class="kv"><span class="kk">Buyback</span><span class="vv pos">US$1bi (04/06/26)</span></div>
+          <div class="kv"><span class="kk">Target médio</span><span class="vv pos">US$18,48 (+54%)</span></div>
+          <div class="kv"><span class="kk">Próx. earnings</span><span class="vv">18/08/2026</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill phold">Aguardar — suporte</span>
+          <div class="vtxt">Próxima ao suporte crítico de US$11,80–12,00. Buyback de US$1bi é sinal positivo da gestão. Upside de 54% no target. Aguardar earnings de agosto antes de aportar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('regn')">
+      <div class="aleft"><div class="tb">REGN</div><div><div class="an">Regeneron Pharmaceuticals</div><div class="as">Biotech — NASDAQ</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 632,05</div><div class="pm">0,39 ações · PM US$534,66</div></div><span class="vb vn">-1,2% dia</span><div class="res pos">+US$ 38,26</div><span class="chev" id="c-regn">▼</span></div>
+    </div>
+    <div class="det" id="regn">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,3929</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 534,66</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 210,07</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 248,33</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+38,26 (+18,2%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">P/E atual</span><span class="vv pos">15,32x — mínimo histórico</span></div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$476 – $821</span></div>
+          <div class="kv"><span class="kk">Dupixent</span><span class="vv pos">Crescendo — motor principal</span></div>
+          <div class="kv"><span class="kk">Pipeline</span><span class="vv pos">CAR-T, hipert. pulmonar</span></div>
+          <div class="kv"><span class="kk">Target médio</span><span class="vv pos">US$841 (+31%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter — oportunidade</span>
+          <div class="vtxt">Queda de -11% criou valuation atraente: P/E 15,32x é mínimo histórico para REGN. Ainda +19,6% sobre seu PM. Dupixent e pipeline expandindo. Target de US$841 representa +31% de upside.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('tsm')">
+      <div class="aleft"><div class="tb">TSM</div><div><div class="an">Taiwan Semiconductor Mfg.</div><div class="as">Semicondutores — NYSE</div></div></div>
+      <div class="aright"><div><div class="pr">US$ 428,89</div><div class="pm">0,034 ações · PM US$295,25</div></div><span class="vb vp">+3,3% dia</span><div class="res pos">+US$ 4,52</div><span class="chev" id="c-tsm">▼</span></div>
+    </div>
+    <div class="det" id="tsm">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">0,03386</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">US$ 295,25</span></div>
+          <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 10,00</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 14,52</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+4,52 (+45,3%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">Market cap</span><span class="vv pos">US$1,95 tri (+139% 12m)</span></div>
+          <div class="kv"><span class="kk">Dividendo</span><span class="vv pos">US$0,955 (ex 11/06/26)</span></div>
+          <div class="kv"><span class="kk">Target</span><span class="vv pos">US$467 (+12,7%)</span></div>
+          <div class="kv"><span class="kk">52w range</span><span class="vv">$203 – $450</span></div>
+          <div class="kv"><span class="kk">Risco único</span><span class="vv neg">Geopolítica Taiwan</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter forte</span>
+          <div class="vtxt">Queda da semana causada pelo alerta do CEO sobre gap de oferta de chips — que é bullish para o longo prazo. Dividendo de US$0,955 com ex-date 11/06. Monopolista em chips de ponta.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ BR ═══════════════ -->
+<div id="p-br" class="panel">
+  <div id="status-br" class="mkt-status mkt-closed">
+    <div id="dot-br" class="mkt-dot dot-closed"></div>
+    <span id="txt-br">Verificando status...</span>
+  </div>
+
+  <div class="sec">Macro Brasil</div>
+  <div class="macro-row">
+    <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">174.197</div><div class="mac-s pos">+1,16% qui</div></div>
+    <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,009</div><div class="mac-s pos">-8,7% no ano</div></div>
+    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,5%</div><div class="mac-s neg">Em queda</div></div>
+    <div class="mac"><div class="mac-l">IPCA 12m</div><div class="mac-v">4,39%</div><div class="mac-s neg">Meta: 3,0%</div></div>
+    <div class="mac"><div class="mac-l">IPCA 2026E</div><div class="mac-v">5,09%</div><div class="mac-s neg">Acima do teto</div></div>
+    <div class="mac"><div class="mac-l">CDI</div><div class="mac-v">~14,4%</div><div class="mac-s neu">Benchmark</div></div>
+  </div>
+
+  <div class="news-section">
+    <div class="news-title">📰 Destaques — seus ativos BR e macro</div>
+    <div class="news-item">
+      <span class="news-badge nb-pos">ITSA4</span>
+      <div><div class="news-text">JCP de R$0,06/ação com data-com em 11/06/2026 — próxima semana. Entra na Carteira BB Dividendos de junho. DY 12m: 9,59%. Selic em 14,5% continua favorecendo Itaú. Suporte: R$11,50. Resistência: R$13,50.</div><div class="news-date">Jun/2026 — BB Investimentos / Investidor10</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-pos">TAEE11</span>
+      <div><div class="news-text">BB Investimentos elevou para COMPRA com alvo R$42,60 (+9,5% do preço atual). Aquisição de 5 linhas da Energisa por R$2,3bi adiciona RAP de R$291M (+6,5%). Acumulado de dividendos em 2026: R$1,47/cota. DY 12m: 8,39%.</div><div class="news-date">21/05/2026 — Investidor10</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-neu">WEGE3</span>
+      <div><div class="news-text">2026 pressionado por câmbio — receita projetada +3% A/A. Reaceleração esperada em 2027 (+14-16%). Alvo XP: R$47 (neutro). Cotação atual ~R$41,51. Próximo ao suporte de R$40 — não aportar agora, aguardar reaceleração de resultados.</div><div class="news-date">Jun/2026 — XP</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-info">Macro BR</span>
+      <div><div class="news-text">Dólar em R$5,009 (-8,7% no ano) beneficia carteira EUA convertida em BRL. IPCA em 5,09% acima do teto — Copom pode pausar cortes da Selic. Ibovespa em 174.197 pontos. Negociações de tarifas EUA-BR em andamento.</div><div class="news-date">06/06/2026 — CNN Brasil / Investing.com</div></div>
+    </div>
+    <div class="news-item">
+      <span class="news-badge nb-info">Atenção: 11/06</span>
+      <div><div class="news-text">Segunda-feira 11/06 é data-com do JCP da ITSA4 (R$0,06/ação) e data-ex do dividendo da TSM (US$0,955). Quem tiver as ações até o fechamento de sexta 06/06 já tem direito a ambos os proventos.</div><div class="news-date">Calendário de proventos</div></div>
+    </div>
+  </div>
+
+  <div class="sec">Posições Brasil</div>
+  <div class="mgrid">
+    <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">R$ 2.215,10</div></div>
+    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">R$ 2.618,40</div></div>
+    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 403,30</div></div>
+    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+18,2%</div></div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('itsa')">
+      <div class="aleft"><div class="tb">ITSA4</div><div><div class="an">Itaúsa S.A.</div><div class="as">Holding financeira — B3</div></div></div>
+      <div class="aright"><div><div class="pr">R$ 12,72</div><div class="pm">100 ações · PM R$9,54</div></div><span class="vb vp">+33,3%</span><div class="res pos">+R$ 349,80</div><span class="chev" id="c-itsa">▼</span></div>
+    </div>
+    <div class="det" id="itsa">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">100 ações</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 9,54</span></div>
+          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 12,72</span></div>
+          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 1.399,20</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 349,80 (+33,3%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">DY 12m</span><span class="vv pos">9,59%</span></div>
+          <div class="kv"><span class="kk">JCP data-com</span><span class="vv pos">11/06/26 — R$0,06/ação</span></div>
+          <div class="kv"><span class="kk">Carteira BB Div.</span><span class="vv pos">Junho/2026</span></div>
+          <div class="kv"><span class="kk">Suporte</span><span class="vv">R$ 11,50</span></div>
+          <div class="kv"><span class="kk">Resistência</span><span class="vv">R$ 13,50</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter / aportar</span>
+          <div class="vtxt">JCP na próxima semana (data-com 11/06). DY 9,59% com Selic favorecendo Itaú. Melhor candidata a aporte na carteira BR.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('taee')">
+      <div class="aleft"><div class="tb">TAEE11</div><div><div class="an">Taesa S.A.</div><div class="as">Transmissão de energia — B3</div></div></div>
+      <div class="aright"><div><div class="pr">R$ 38,90</div><div class="pm">10 cotas · PM R$35,89</div></div><span class="vb vp">+8,4%</span><div class="res pos">+R$ 30,10</div><span class="chev" id="c-taee">▼</span></div>
+    </div>
+    <div class="det" id="taee">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">10 cotas</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 35,89</span></div>
+          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 38,90</span></div>
+          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 389,00</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 30,10 (+8,4%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">DY 12m</span><span class="vv pos">8,39%</span></div>
+          <div class="kv"><span class="kk">Div. acum. 2026</span><span class="vv pos">R$1,47/cota</span></div>
+          <div class="kv"><span class="kk">Alvo BB Invest.</span><span class="vv pos">R$42,60 (compra)</span></div>
+          <div class="kv"><span class="kk">Aquisição Energisa</span><span class="vv pos">+RAP R$291M</span></div>
+          <div class="kv"><span class="kk">Suporte / Resist.</span><span class="vv">R$37 / R$43,76</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill pbuy">Manter — dividendeira</span>
+          <div class="vtxt">BB elevou para COMPRA com alvo R$42,60. Aquisição da Energisa reforça base de receita regulada. DY 8,39% com fluxo previsível.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo">
+    <div class="ah" onclick="tg('wege')">
+      <div class="aleft"><div class="tb">WEGE3</div><div><div class="an">WEG S.A.</div><div class="as">Motores / Equipamentos — B3</div></div></div>
+      <div class="aright"><div><div class="pr">R$ 41,51</div><div class="pm">20 ações · PM R$40,34</div></div><span class="vb vp">+2,9%</span><div class="res pos">+R$ 23,40</div><span class="chev" id="c-wege">▼</span></div>
+    </div>
+    <div class="det" id="wege">
+      <div class="dg">
+        <div class="dc"><div class="ds">Posição</div>
+          <div class="kv"><span class="kk">Qtd</span><span class="vv">20 ações</span></div>
+          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 40,34</span></div>
+          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 41,51</span></div>
+          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 830,20</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 23,40 (+2,9%)</span></div>
+        </div>
+        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
+          <div class="kv"><span class="kk">P/L 2026E</span><span class="vv neu">29x</span></div>
+          <div class="kv"><span class="kk">P/L 2027E</span><span class="vv pos">25x</span></div>
+          <div class="kv"><span class="kk">Receita 2026E</span><span class="vv neg">+3% A/A</span></div>
+          <div class="kv"><span class="kk">Alvo XP</span><span class="vv neu">R$47 (neutro)</span></div>
+          <div class="kv"><span class="kk">Suporte</span><span class="vv">R$ 40</span></div>
+        </div>
+        <div class="dc"><div class="ds">Veredicto B&H</div>
+          <span class="pill phold">Manter — aguardar 2027</span>
+          <div class="vtxt">Ótima empresa, 2026 pressionado por câmbio. Reaceleração em 2027. Aguardar R$38–40 para oportunidade de aporte.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ANÁLISE ═══════════════ -->
+<div id="p-analise" class="panel">
+  <div class="mgrid">
+    <div class="mc"><div class="mc-l">Score EUA</div><div class="mc-v pos">8,0 / 10</div><div class="mc-s neg">Semana difícil</div></div>
+    <div class="mc"><div class="mc-l">Score BR</div><div class="mc-v pos">7,8 / 10</div><div class="mc-s pos">Estável</div></div>
+    <div class="mc"><div class="mc-l">Score geral</div><div class="mc-v pos">7,9 / 10</div></div>
+    <div class="mc"><div class="mc-l">Atenção urgente</div><div class="mc-v">11/06</div><div class="mc-s pos">Data-com ITSA4 + TSM ex-div</div></div>
+  </div>
+
+  <div class="ativo">
+    <div style="padding:12px 14px">
+      <div class="ds" style="margin-bottom:10px">Ranking B&H — qualidade e perspectiva (09/06/2026)</div>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Ativo</th><th>Resultado</th><th>Semana</th><th>Perspectiva</th><th>Ação</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><strong>NVDA</strong></td><td class="pos">+97,7%</td><td class="neg">-1,5%</td><td>Strong Buy · Revenue +65% · target +46%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>2</td><td><strong>IAU</strong></td><td class="pos">+42,4%</td><td class="pos">+0,5%</td><td>Único ativo positivo na sex · hedge ideal</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
+          <tr><td>3</td><td><strong>AMZN</strong></td><td class="pos">+41,5%</td><td class="neg">-1,0%</td><td>AWS +17% · Prime Day 23/06 · target +27%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>4</td><td><strong>NU</strong></td><td class="pos">+40,9%</td><td class="neg">-1,6%</td><td>Buyback $1bi · suporte $11,80 · upside +54%</td><td><span class="pill phold">Aguardar</span></td></tr>
+          <tr><td>5</td><td><strong>TSLA</strong></td><td class="pos">+40,0%</td><td class="neg">-7,9%</td><td>3 upgrades na semana · EVs +16% global</td><td><span class="pill phold">Manter</span></td></tr>
+          <tr><td>6</td><td><strong>TSM</strong></td><td class="pos">+40,6%</td><td class="neg">-6,7%</td><td>Ex-div 11/06 · market cap $1,95T · target +12%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>7</td><td><strong>ITSA4</strong></td><td class="pos">+33,3%</td><td class="neu">—</td><td>JCP data-com 11/06 · DY 9,59% · BB Dividendos</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
+          <tr><td>8</td><td><strong>REGN</strong></td><td class="pos">+19,6%</td><td class="neg">-11,1%</td><td>P/E 15x (mínimo histórico) · target +31%</td><td><span class="pill pbuy">Manter — oport.</span></td></tr>
+          <tr><td>9</td><td><strong>TAEE11</strong></td><td class="pos">+8,4%</td><td class="neu">—</td><td>BB elevou p/ COMPRA · alvo R$42,60</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>10</td><td><strong>LMT</strong></td><td class="pos">+8,5%</td><td class="pos">+0,2%</td><td>Beta negativo · div Q2 $3,45 · defensivo</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>11</td><td><strong>WEGE3</strong></td><td class="pos">+2,9%</td><td class="neu">—</td><td>2026 fraco · aguardar reaceleração 2027</td><td><span class="pill phold">Manter</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="aviso">
+    <strong>📅 Agenda da semana (09–13/06/2026):</strong><br>
+    • <strong>11/06 (seg)</strong> — Data-com JCP ITSA4 (R$0,06/ação) + Ex-date dividendo TSM (US$0,955)<br>
+    • <strong>Com US$46 disponíveis:</strong> IAU a ~US$85 é a opção mais segura (quase 1 cota inteira). Para mais risco/retorno: NU a US$11,99 → ~3,8 cotas, upside de 54% no target dos analistas.<br>
+    • <strong>REGN:</strong> Queda de -11% criou P/E de 15x — o mais baixo em anos. Vale monitorar para possível aporte futuro.
+  </div>
+</div>
+
+<!-- ═══════════════ FINANÇAS PESSOAIS ═══════════════ -->
+<div id="p-financas" class="panel">
+  <div class="mes-nav">
+    <button class="mes-btn" onclick="mudarMes(-1)">◀</button>
+    <div class="mes-label" id="mes-label">—</div>
+    <button class="mes-btn" onclick="mudarMes(1)">▶</button>
+  </div>
+  <div class="resumo-mes">
+    <div class="rm"><div class="rm-l">Receitas</div><div class="rm-v pos" id="tot-rec">R$ 0</div></div>
+    <div class="rm"><div class="rm-l">Despesas</div><div class="rm-v neg" id="tot-pag">R$ 0</div></div>
+    <div class="rm"><div class="rm-l">Saldo do mês</div><div class="rm-v" id="tot-saldo">R$ 0</div></div>
+    <div class="rm"><div class="rm-l">Pendentes</div><div class="rm-v neu" id="tot-pend">R$ 0</div></div>
+  </div>
+  <div class="fin-grid">
+    <div class="fin-form">
+      <h3>💚 Lançar receita</h3>
+      <input class="fin-input" id="rec-desc" placeholder="Descrição (ex: Salário, Dividendos...)">
+      <div class="fin-row">
+        <input class="fin-input" id="rec-val" placeholder="Valor (R$)" type="number" min="0" step="0.01">
+        <input class="fin-input" id="rec-data" type="date">
+      </div>
+      <select class="fin-select" id="rec-cat">
+        <option value="">Categoria</option>
+        <option>Salário</option><option>Freelance</option><option>Dividendos</option>
+        <option>Aluguel recebido</option><option>Investimentos</option><option>Outros</option>
+      </select>
+      <select class="fin-select" id="rec-status">
+        <option value="recebido">✅ Recebido</option>
+        <option value="pendente">⏳ A receber</option>
+      </select>
+      <button class="btn-add rec" onclick="addLanc('rec')">+ Adicionar receita</button>
+    </div>
+    <div class="fin-form">
+      <h3>❤️ Lançar despesa</h3>
+      <input class="fin-input" id="pag-desc" placeholder="Descrição (ex: Aluguel, Internet...)">
+      <div class="fin-row">
+        <input class="fin-input" id="pag-val" placeholder="Valor (R$)" type="number" min="0" step="0.01">
+        <input class="fin-input" id="pag-data" type="date">
+      </div>
+      <select class="fin-select" id="pag-cat">
+        <option value="">Categoria</option>
+        <option>Moradia</option><option>Alimentação</option><option>Transporte</option>
+        <option>Saúde</option><option>Educação</option><option>Lazer</option>
+        <option>Investimento aportado</option><option>Contas fixas</option><option>Outros</option>
+      </select>
+      <select class="fin-select" id="pag-status">
+        <option value="pago">✅ Pago</option>
+        <option value="pendente">⏳ A pagar</option>
+        <option value="atrasado">🔴 Atrasado</option>
+      </select>
+      <button class="btn-add" onclick="addLanc('pag')">+ Adicionar despesa</button>
+    </div>
+  </div>
+  <div class="lancamentos">
+    <div class="lanc-header">
+      <div class="lanc-title">Lançamentos do mês</div>
+      <div class="lanc-filters">
+        <div class="lanc-filter on" onclick="filtrar('todos',this)">Todos</div>
+        <div class="lanc-filter" onclick="filtrar('rec',this)">Receitas</div>
+        <div class="lanc-filter" onclick="filtrar('pag',this)">Despesas</div>
+        <div class="lanc-filter" onclick="filtrar('pendente',this)">Pendentes</div>
+      </div>
+    </div>
+    <div id="lista-lanc"><div class="empty-state">Nenhum lançamento ainda.<br>Adicione receitas e despesas acima.</div></div>
+  </div>
+</div>
+
+<script>
+function st(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.getElementById('p-'+id).classList.add('on');el.classList.add('on');}
+function tg(id){const d=document.getElementById(id);const c=document.getElementById('c-'+id);const o=d.classList.contains('op');d.classList.toggle('op',!o);if(c)c.style.transform=o?'':'rotate(180deg)';}
+let vH=false;
+function toggleValues(){vH=!vH;const label=document.getElementById('hide-label');const eye=document.getElementById('eye-txt');document.querySelectorAll('.mc-v,.mc-s,.res,.pr,.pm,.vv,.mac-v,.mac-s,.rm-v,.lanc-val').forEach(el=>el.classList.toggle('hidden-val',vH));label.textContent=vH?'Mostrar valores':'Ocultar valores';eye.textContent=vH?'🙈':'👁';}
+function checkMarkets(){const now=new Date();const nyNow=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));const nyDay=nyNow.getDay();const nyT=nyNow.getHours()*60+nyNow.getMinutes();let eS,eC,eD,eDt;if(nyDay===0||nyDay===6){eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Fim de semana — abre segunda 09:30 ET';}else if(nyT>=570&&nyT<960){eS='🟢 NYSE/NASDAQ aberto';eC='mkt-open';eD='dot-open';const c=960-nyT;eDt='Fecha em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=240&&nyT<570){eS='🟡 Pré-mercado EUA';eC='mkt-pre';eD='dot-pre';const c=570-nyT;eDt='Abre em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=960&&nyT<1200){eS='🟡 Pós-mercado EUA';eC='mkt-pre';eD='dot-pre';eDt='After hours até 20:00 ET';}else{eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Abre às 09:30 ET';}
+const brNow=new Date(now.toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));const brDay=brNow.getDay();const brT=brNow.getHours()*60+brNow.getMinutes();let bS,bC,bD,bDt;if(brDay===0||brDay===6){bS='🔴 B3 fechada';bC='mkt-closed';bD='dot-closed';bDt='Fim de semana — abre segunda 10:00 BRT';}else if(brT>=600&&brT<1075){bS='🟢 B3 aberta';bC='mkt-open';bD='dot-open';const c=1075-brT;bDt='Fecha em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(brT>=570&&brT<600){bS='🟡 Pré-abertura B3';bC='mkt-pre';bD='dot-pre';bDt='Abre às 10:00 BRT';}else{bS='🔴 B3 fechada';bC='mkt-closed';bD='dot-closed';bDt='Abre às 10:00 BRT';}
+const se=document.getElementById('status-eua');if(se){se.className='mkt-status '+eC;document.getElementById('dot-eua').className='mkt-dot '+eD;document.getElementById('txt-eua').innerHTML=eS+' <span class="mkt-detail">— '+eDt+'</span>';}
+const sb=document.getElementById('status-br');if(sb){sb.className='mkt-status '+bC;document.getElementById('dot-br').className='mkt-dot '+bD;document.getElementById('txt-br').innerHTML=bS+' <span class="mkt-detail">— '+bDt+'</span>';}}
+checkMarkets();setInterval(checkMarkets,60000);
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[];
+try{lancamentos=JSON.parse(localStorage.getItem('fin_lanc')||'[]');}catch(e){lancamentos=[];}
+function salvar(){try{localStorage.setItem('fin_lanc',JSON.stringify(lancamentos));}catch(e){}}
+function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}renderFinancas();}
+function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status});salvar();['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
+function deletarLanc(id){if(!confirm('Remover?'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
+function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
+function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
+function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();}
+function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
+window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
+</script>
+</body>
+</html>
