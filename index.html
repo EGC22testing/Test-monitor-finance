@@ -752,7 +752,6 @@ function renderLista(){const lista=document.getElementById('lista-lanc');let lan
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
 // ── COTAÇÕES EM TEMPO REAL ──────────────────────────────
-// Usa Brapi.dev (CORS nativo, sem proxy) para todos os ativos
 const CART = {
   NVDA:   {qtd:0.49003, pm:103.21, m:'USD', id:'nvda'},
   AMZN:   {qtd:0.20138, pm:173.67, m:'USD', id:'amzn'},
@@ -766,7 +765,9 @@ const CART = {
   ITSA4:  {qtd:100,     pm:9.54,   m:'BRL', id:'itsa4'},
   TAEE11: {qtd:10,      pm:35.89,  m:'BRL', id:'taee11'},
 };
+
 let QT={}, rtDolar=5.009, rtCountdown=60, rtInterval=null;
+let pendingCallbacks=0, resolvedCallbacks=0;
 
 function fU(v){return 'US$ '+parseFloat(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fB(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -774,34 +775,77 @@ function fn(v,d=2){return typeof v==='number'?v.toFixed(d):'N/D';}
 function setEl(id,txt){const e=document.getElementById(id);if(e)e.textContent=txt;}
 function setStatus(html,color){const e=document.getElementById('rt-ts');if(e){e.innerHTML=html;e.style.color=color||'#888';}}
 
-async function fetchRT(){
-  setStatus('⏳ Buscando cotações em tempo real...','#888');
+// Técnica JSONP via <script> tag — contorna CORS completamente
+function jsonpFetch(url, cbName){
+  return new Promise((resolve, reject)=>{
+    const timeout = setTimeout(()=>{ cleanup(); reject(new Error('timeout')); }, 8000);
+    function cleanup(){ 
+      delete window[cbName]; 
+      const s = document.getElementById('jsonp-'+cbName);
+      if(s) s.remove();
+      clearTimeout(timeout);
+    }
+    window[cbName] = (data)=>{ cleanup(); resolve(data); };
+    const script = document.createElement('script');
+    script.id = 'jsonp-'+cbName;
+    script.src = url + (url.includes('?')?'&':'?') + 'callback='+cbName;
+    script.onerror = ()=>{ cleanup(); reject(new Error('script error')); };
+    document.head.appendChild(script);
+  });
+}
+
+// Yahoo Finance suporta JSONP nativamente
+async function fetchYahooJSONP(symbols){
+  const syms = symbols.join('%2C');
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChangePercent`;
+  const cbName = 'ycb_' + Date.now();
   try{
-    // Brapi.dev suporta CORS nativamente — ativos BR e EUA no mesmo endpoint
-    const allSyms = Object.keys(CART).join('%2C');
-    const url = `https://brapi.dev/api/quote/${allSyms}?token=anonymous`;
-    const r = await fetch(url, {signal: AbortSignal.timeout(10000)});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const json = await r.json();
+    const data = await jsonpFetch(url, cbName);
+    return data?.quoteResponse?.result || [];
+  }catch(e){
+    // Tenta query2 como fallback
+    try{
+      const url2 = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChangePercent`;
+      const cbName2 = 'ycb2_' + Date.now();
+      const data2 = await jsonpFetch(url2, cbName2);
+      return data2?.quoteResponse?.result || [];
+    }catch(e2){ return []; }
+  }
+}
 
-    if(!json.results || json.results.length === 0) throw new Error('Sem resultados');
+// AwesomeAPI para câmbio — suporta CORS
+async function fetchDolar(){
+  try{
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL', {signal: AbortSignal.timeout(5000)});
+    const j = await r.json();
+    return parseFloat(j.USDBRL?.bid) || 5.009;
+  }catch(e){ return 5.009; }
+}
 
-    json.results.forEach(q => {
-      QT[q.symbol] = {
+async function fetchRT(){
+  setStatus('⏳ Buscando cotações...','#888');
+  try{
+    // Buscar câmbio (AwesomeAPI tem CORS liberado)
+    const dolar = await fetchDolar();
+    rtDolar = dolar;
+
+    // Todos os tickers: EUA + BR com sufixo .SA
+    const euaSyms  = ['NVDA','AMZN','TSLA','LMT','NU','REGN','TSM','IAU'];
+    const brSyms   = ['WEGE3.SA','ITSA4.SA','TAEE11.SA'];
+    const allSyms  = [...euaSyms, ...brSyms];
+
+    // Yahoo Finance via JSONP
+    const results = await fetchYahooJSONP(allSyms);
+
+    if(results.length === 0) throw new Error('Nenhum resultado');
+
+    results.forEach(q=>{
+      const sym = q.symbol.replace('.SA','');
+      QT[sym] = {
         regularMarketPrice: q.regularMarketPrice,
         regularMarketChangePercent: q.regularMarketChangePercent || 0,
-        currency: q.currency
       };
     });
-
-    // Calcular dólar a partir dos ativos USD vs BRL
-    // Brapi retorna preços em BRL para ativos estrangeiros listados na B3
-    // Para EUA, retorna em USD — precisamos do câmbio separado
-    try{
-      const fxR = await fetch('https://brapi.dev/api/v2/currency?currency=USD-BRL&token=anonymous', {signal: AbortSignal.timeout(5000)});
-      const fxJ = await fxR.json();
-      if(fxJ.currency?.[0]?.ask) rtDolar = parseFloat(fxJ.currency[0].ask);
-    }catch(e){ /* usa valor padrão */ }
 
     renderRT();
     startCountdown();
@@ -809,34 +853,33 @@ async function fetchRT(){
     setStatus(`✅ Atualizado às ${ts} · próxima em <span id="rt-countdown">60</span>s`, '#27ae60');
 
   }catch(err){
-    console.warn('Brapi falhou:', err);
-    // Fallback: tenta Yahoo Finance direto (funciona em alguns navegadores sem CORS)
+    console.warn('Erro cotações:', err);
+    // Último recurso: AwesomeAPI para BR + fetch direto Yahoo para EUA
     try{
-      const syms = Object.keys(CART).map(s=>s.replace('WEGE3','WEGE3.SA').replace('ITSA4','ITSA4.SA').replace('TAEE11','TAEE11.SA')).join('%2C');
-      const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketChangePercent,currency`;
-      const yr = await fetch(yUrl, {mode:'cors', signal: AbortSignal.timeout(8000)});
-      const yj = await yr.json();
-      if(yj.quoteResponse?.result?.length){
-        yj.quoteResponse.result.forEach(q=>{
-          // Normaliza ticker BR: remove .SA
-          const sym = q.symbol.replace('.SA','');
-          QT[sym] = {regularMarketPrice: q.regularMarketPrice, regularMarketChangePercent: q.regularMarketChangePercent||0};
+      // AwesomeAPI tem CORS total
+      const brTickers = 'WEGE3,ITSA4,TAEE11';
+      const brR = await fetch(`https://economia.awesomeapi.com.br/json/last/${brTickers}`, {signal: AbortSignal.timeout(6000)});
+      // AwesomeAPI é para câmbio, não ações. Usa Brapi com CORS explícito
+      const brapiR = await fetch(`https://brapi.dev/api/quote/WEGE3,ITSA4,TAEE11,NVDA,AMZN,TSLA,LMT,NU,REGN,TSM,IAU`, {
+        signal: AbortSignal.timeout(8000),
+        headers: {'Accept':'application/json'}
+      });
+      if(brapiR.ok){
+        const brapiJ = await brapiR.json();
+        (brapiJ.results||[]).forEach(q=>{
+          QT[q.symbol] = {regularMarketPrice: q.regularMarketPrice, regularMarketChangePercent: q.regularMarketChangePercent||0};
         });
-        // Câmbio via Yahoo
-        try{
-          const fxr = await fetch('https://query1.finance.yahoo.com/v7/finance/quote?symbols=BRL%3DX&fields=regularMarketPrice',{mode:'cors',signal:AbortSignal.timeout(5000)});
-          const fxj = await fxr.json();
-          const dol = fxj.quoteResponse?.result?.[0]?.regularMarketPrice;
-          if(dol) rtDolar = dol;
-        }catch(e){}
-        renderRT();
-        startCountdown();
-        const ts = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-        setStatus(`✅ Atualizado às ${ts} (Yahoo) · próxima em <span id="rt-countdown">60</span>s`, '#27ae60');
-        return;
+        if(Object.keys(QT).length > 0){
+          renderRT();
+          startCountdown();
+          const ts = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+          setStatus(`✅ Atualizado às ${ts} (Brapi) · próxima em <span id="rt-countdown">60</span>s`, '#27ae60');
+          return;
+        }
       }
-    }catch(e2){ console.warn('Yahoo também falhou:', e2); }
-    setStatus('⚠️ Sem acesso às APIs de cotação. Tente recarregar a página.','#e74c3c');
+    }catch(e2){ console.warn('Fallback também falhou:', e2); }
+
+    setStatus('⚠️ APIs indisponíveis agora. <a href="#" onclick="fetchRT();return false;" style="color:inherit;text-decoration:underline">Tentar novamente</a>','#e74c3c');
   }
 }
 
@@ -863,7 +906,6 @@ function renderRT(){
     const res = pos - cst;
     const pct = ((pos - cst) / cst) * 100;
 
-    // Atualizar header do card
     const ativo = document.querySelector('[id="c-'+info.id+'"]')?.closest('.ativo');
     if(ativo){
       const prEl = ativo.querySelector('.pr');
@@ -874,7 +916,6 @@ function renderRT(){
       if(rsEl){ rsEl.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res)); rsEl.className='res '+(res>=0?'pos':'neg'); }
     }
 
-    // Atualizar detalhes internos
     const det = document.getElementById(info.id);
     if(det){
       det.querySelectorAll('.kv').forEach(kv=>{
@@ -892,38 +933,31 @@ function renderRT(){
     else              { totBR_pos +=pos; totBR_cst +=cst; }
   });
 
-  // Totais EUA
-  const rEUA = totEUA_pos-totEUA_cst, pEUA = (rEUA/totEUA_cst)*100;
-  setEl('rt-eua-pos', fU(totEUA_pos));
-  setEl('rt-eua-res', (rEUA>=0?'+':'')+fU(Math.abs(rEUA)));
-  setEl('rt-eua-pct', (pEUA>=0?'+':'')+fn(pEUA)+'%');
+  const rEUA=totEUA_pos-totEUA_cst, pEUA=(rEUA/totEUA_cst)*100;
+  setEl('rt-eua-pos',fU(totEUA_pos));
+  setEl('rt-eua-res',(rEUA>=0?'+':'')+fU(Math.abs(rEUA)));
+  setEl('rt-eua-pct',(pEUA>=0?'+':'')+fn(pEUA)+'%');
 
-  // Totais BR
-  const rBR = totBR_pos-totBR_cst, pBR = (rBR/totBR_cst)*100;
-  setEl('rt-br-pos', fB(totBR_pos));
-  setEl('rt-br-res', (rBR>=0?'+':'')+fB(Math.abs(rBR)));
-  setEl('rt-br-pct', (pBR>=0?'+':'')+fn(pBR)+'%');
+  const rBR=totBR_pos-totBR_cst, pBR=(rBR/totBR_cst)*100;
+  setEl('rt-br-pos',fB(totBR_pos));
+  setEl('rt-br-res',(rBR>=0?'+':'')+fB(Math.abs(rBR)));
+  setEl('rt-br-pct',(pBR>=0?'+':'')+fn(pBR)+'%');
 
-  // Consolidado
-  const euaBRL = totEUA_pos * rtDolar;
-  const pat    = euaBRL + totBR_pos;
-  const custoT = totEUA_cst * rtDolar + totBR_cst;
-  const rT     = pat - custoT;
-  const pT     = (rT / custoT) * 100;
-  setEl('rt-cons-pat', fB(pat));
-  setEl('rt-cons-res', (rT>=0?'+':'')+fB(Math.abs(rT)));
-  setEl('rt-cons-pct', (pT>=0?'+':'')+fn(pT)+'%');
-  setEl('rt-cons-eua', fU(totEUA_pos));
-  setEl('rt-cons-br',  fB(totBR_pos));
+  const euaBRL=totEUA_pos*rtDolar, pat=euaBRL+totBR_pos;
+  const custoT=totEUA_cst*rtDolar+totBR_cst, rT=pat-custoT, pT=(rT/custoT)*100;
+  setEl('rt-cons-pat',fB(pat));
+  setEl('rt-cons-res',(rT>=0?'+':'')+fB(Math.abs(rT)));
+  setEl('rt-cons-pct',(pT>=0?'+':'')+fn(pT)+'%');
+  setEl('rt-cons-eua',fU(totEUA_pos));
+  setEl('rt-cons-br',fB(totBR_pos));
 }
 
-window.addEventListener('DOMContentLoaded', ()=>{
-  // Injetar IDs nas métricas
+window.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('#p-consolidado .mc').forEach(mc=>{
     const lbl=mc.querySelector('.mc-l'), val=mc.querySelector('.mc-v');
     if(!lbl||!val) return;
-    const t = lbl.textContent.trim();
-    if(t==='Total em BRL')            val.id='rt-cons-pat';
+    const t=lbl.textContent.trim();
+    if(t==='Total em BRL')             val.id='rt-cons-pat';
     else if(t==='Resultado'&&!val.id)  val.id='rt-cons-res';
     else if(t==='Resultado %'&&!val.id)val.id='rt-cons-pct';
     else if(t==='Carteira EUA')        val.id='rt-cons-eua';
@@ -932,7 +966,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('#p-eua .mc').forEach(mc=>{
     const lbl=mc.querySelector('.mc-l'), val=mc.querySelector('.mc-v');
     if(!lbl||!val) return;
-    const t = lbl.textContent.trim();
+    const t=lbl.textContent.trim();
     if(t==='Posição atual')            val.id='rt-eua-pos';
     else if(t==='Resultado'&&!val.id)  val.id='rt-eua-res';
     else if(t==='Resultado %'&&!val.id)val.id='rt-eua-pct';
@@ -940,22 +974,19 @@ window.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('#p-br .mc').forEach(mc=>{
     const lbl=mc.querySelector('.mc-l'), val=mc.querySelector('.mc-v');
     if(!lbl||!val) return;
-    const t = lbl.textContent.trim();
+    const t=lbl.textContent.trim();
     if(t==='Posição atual')            val.id='rt-br-pos';
     else if(t==='Resultado'&&!val.id)  val.id='rt-br-res';
     else if(t==='Resultado %'&&!val.id)val.id='rt-br-pct';
   });
 
-  // Badge de status
-  const sub = document.querySelector('.sub');
-  if(sub && !document.getElementById('rt-ts')){
-    const ts = document.createElement('div');
-    ts.id = 'rt-ts';
-    ts.style.cssText = 'font-size:11px;color:#888;margin-top:3px;';
-    ts.textContent = '⏳ Conectando às cotações...';
+  const sub=document.querySelector('.sub');
+  if(sub&&!document.getElementById('rt-ts')){
+    const ts=document.createElement('div');
+    ts.id='rt-ts'; ts.style.cssText='font-size:11px;color:#888;margin-top:3px;';
+    ts.textContent='⏳ Conectando às cotações...';
     sub.after(ts);
   }
-
   fetchRT();
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
