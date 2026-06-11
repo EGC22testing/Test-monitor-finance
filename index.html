@@ -802,10 +802,10 @@ async function fetchRT(){
     renderRT();
     startCountdown();
 
-    const isLive = json.source === 'live';
     const ts = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    const srcLabel = isLive ? '⚡ ao vivo' : '📌 atualizado manualmente';
-    setStatus(`✅ ${srcLabel} · ${ts} · próxima em <span id="rt-countdown">60</span>s`, '#27ae60');
+    const srcLabel = json.source === 'live' ? '⚡ ao vivo' : json.source === 'partial' ? '🔄 parcialmente ao vivo' : '📌 dados estáticos';
+    const statusColor = json.source === 'live' ? '#27ae60' : json.source === 'partial' ? '#854F0B' : '#888';
+    setStatus(`✅ ${srcLabel} · ${ts} · próxima em <span id="rt-countdown">60</span>s`, statusColor);
 
   }catch(err){
     console.warn('Erro Worker:', err);
