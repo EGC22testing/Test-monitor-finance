@@ -130,8 +130,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
 <div class="header-row">
   <div>
-    <h1>📊 Monitor Financeiro <span class="badge-live">AO VIVO</span><span class="badge-date">09/06/2026</span></h1>
-    <div class="sub">Preços: fechamento 06/06/2026 · Domingo — mercados fechados · Próxima abertura: segunda 09:30 ET / 10:00 BRT</div>
+    <h1>📊 Monitor Financeiro <span class="badge-live">AO VIVO</span><span class="badge-date">16/06/2026</span></h1>
+    <div class="sub">Cotações ao vivo via Finnhub + Brapi · 16/06/2026 · Atualiza a cada 60s</div>
   </div>
   <button class="btn-hide" onclick="toggleValues()" id="btn-hide-vals">
     <span id="eye-txt">👁</span>
@@ -149,14 +149,14 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
 <!-- ═══════════════ CONSOLIDADO ═══════════════ -->
 <div id="p-consolidado" class="panel on">
-  <div class="sec">Patrimônio consolidado — fechamento 06/06/2026</div>
+  <div class="sec">Patrimônio consolidado — 16/06/2026</div>
   <div class="mgrid">
-    <div class="mc"><div class="mc-l">Total em BRL</div><div class="mc-v">R$ 6.689,20</div><div class="mc-s neu">câmbio R$5,179</div></div>
+    <div class="mc"><div class="mc-l">Total em BRL</div><div class="mc-v">R$ 6.740,28</div><div class="mc-s neu">câmbio R$5,179</div></div>
     <div class="mc"><div class="mc-l">Custo total</div><div class="mc-v">R$ 5.357,01</div></div>
-    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 1.332,19</div></div>
-    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+28,8%</div></div>
-    <div class="mc"><div class="mc-l">Carteira EUA</div><div class="mc-v">US$ 805,35</div><div class="mc-s pos">+29,9% · 59,2% do total</div></div>
-    <div class="mc"><div class="mc-l">Carteira BR</div><div class="mc-v">R$ 2.518,30</div><div class="mc-s pos">+18,2% · 40,8% do total</div></div>
+    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 1.383,27</div></div>
+    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+25,8%</div></div>
+    <div class="mc"><div class="mc-l">Carteira EUA</div><div class="mc-v">US$ 814,61</div><div class="mc-s pos">+29,9% · 59,2% do total</div></div>
+    <div class="mc"><div class="mc-l">Carteira BR</div><div class="mc-v">R$ 2.518,40</div><div class="mc-s pos">+18,2% · 40,8% do total</div></div>
   </div>
 
   <div class="sec">Indicadores macro — última atualização 06/06/2026</div>
@@ -172,21 +172,22 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
   <div class="ativo">
     <div style="padding:12px 14px">
-      <div class="ds" style="margin-bottom:10px">Todos os ativos — fechamento 06/06/2026</div>
+      <div class="ds" style="margin-bottom:10px">Todos os ativos — 16/06/2026</div>
       <table class="tbl">
         <thead><tr><th>Ativo</th><th>Mercado</th><th>Preço</th><th>Var. dia</th><th>Custo</th><th>Posição</th><th>Resultado</th><th>%</th></tr></thead>
-        <tbody>
-          <tr><td><strong>NVDA</strong></td><td>EUA</td><td>US$ 208,14</td><td class="pos">+2,0%</td><td>$50,58</td><td>$101,99</td><td class="pos">+$51,41</td><td class="pos">+101,7%</td></tr>
-          <tr><td><strong>REGN</strong></td><td>EUA</td><td>US$ 632,05</td><td class="neg">-1,2%</td><td>$210,07</td><td>$248,33</td><td class="pos">+$38,26</td><td class="pos">+18,8%</td></tr>
-          <tr><td><strong>IAU</strong></td><td>EUA</td><td>US$ 81,68</td><td class="neg">-4,2%</td><td>$59,97</td><td>$81,84</td><td class="pos">+$21,87</td><td class="pos">+36,5%</td></tr>
-          <tr><td><strong>TSLA</strong></td><td>EUA</td><td>US$ 408,87</td><td class="pos">+4,5%</td><td>$52,51</td><td>$76,82</td><td class="pos">+$24,31</td><td class="pos">+46,3%</td></tr>
-          <tr><td><strong>LMT</strong></td><td>EUA</td><td>US$ 519,16</td><td class="neg">-0,3%</td><td>$149,97</td><td>$162,29</td><td class="pos">+$12,32</td><td class="pos">+8,2%</td></tr>
-          <tr><td><strong>AMZN</strong></td><td>EUA</td><td>US$ 244,98</td><td class="neg">-0,3%</td><td>$34,97</td><td>$49,33</td><td class="pos">+$14,36</td><td class="pos">+41,1%</td></tr>
-          <tr><td><strong>NU</strong></td><td>EUA</td><td>US$ 11,71</td><td class="neg">-2,3%</td><td>$17,02</td><td>$23,42</td><td class="pos">+$6,40</td><td class="pos">+37,6%</td></tr>
-          <tr><td><strong>TSM</strong></td><td>EUA</td><td>US$ 428,89</td><td class="pos">+3,3%</td><td>$10,00</td><td>$14,52</td><td class="pos">+$4,52</td><td class="pos">+45,3%</td></tr>
-          <tr><td><strong>ITSA4</strong></td><td>BR</td><td>R$ 12,72</td><td class="neu">—</td><td>R$1.049,40</td><td>R$1.399,20</td><td class="pos">+R$349,80</td><td class="pos">+33,3%</td></tr>
-          <tr><td><strong>TAEE11</strong></td><td>BR</td><td>R$ 38,90</td><td class="neu">—</td><td>R$358,90</td><td>R$389,00</td><td class="pos">+R$30,10</td><td class="pos">+8,4%</td></tr>
-          <tr><td><strong>WEGE3</strong></td><td>BR</td><td>R$ 41,51</td><td class="neu">—</td><td>R$806,80</td><td>R$830,20</td><td class="pos">+R$23,40</td><td class="pos">+2,9%</td></tr>
+        <tbody id="tabela-consolidada">
+          <tr><td><strong>NVDA</strong></td><td>EUA</td><td id="t-NVDA-pr">US$ 209,69</td><td id="t-NVDA-vd" class="neg">-1,3%</td><td>$50,58</td><td id="t-NVDA-pos">$102,75</td><td id="t-NVDA-res" class="pos">+$52,17</td><td id="t-NVDA-pct" class="pos">+103,2%</td></tr>
+          <tr><td><strong>REGN</strong></td><td>EUA</td><td id="t-REGN-pr">US$ 606,50</td><td id="t-REGN-vd" class="pos">+0,8%</td><td>$210,07</td><td id="t-REGN-pos">$238,29</td><td id="t-REGN-res" class="pos">+$28,22</td><td id="t-REGN-pct" class="pos">+13,4%</td></tr>
+          <tr><td><strong>IAU</strong></td><td>EUA</td><td id="t-IAU-pr">US$ 81,52</td><td id="t-IAU-vd" class="pos">+0,3%</td><td>$59,97</td><td id="t-IAU-pos">$81,68</td><td id="t-IAU-res" class="pos">+$21,71</td><td id="t-IAU-pct" class="pos">+36,2%</td></tr>
+          <tr><td><strong>TSLA</strong></td><td>EUA</td><td id="t-TSLA-pr">US$ 409,94</td><td id="t-TSLA-vd" class="neg">-0,3%</td><td>$52,51</td><td id="t-TSLA-pos">$77,02</td><td id="t-TSLA-res" class="pos">+$24,51</td><td id="t-TSLA-pct" class="pos">+46,7%</td></tr>
+          <tr><td><strong>LMT</strong></td><td>EUA</td><td id="t-LMT-pr">US$ 529,62</td><td id="t-LMT-vd" class="neg">-0,1%</td><td>$149,97</td><td id="t-LMT-pos">$165,56</td><td id="t-LMT-res" class="pos">+$15,59</td><td id="t-LMT-pct" class="pos">+10,4%</td></tr>
+          <tr><td><strong>AMZN</strong></td><td>EUA</td><td id="t-AMZN-pr">US$ 246,32</td><td id="t-AMZN-vd" class="pos">+0,1%</td><td>$34,97</td><td id="t-AMZN-pos">$49,60</td><td id="t-AMZN-res" class="pos">+$14,63</td><td id="t-AMZN-pct" class="pos">+41,8%</td></tr>
+          <tr><td><strong>NU</strong></td><td>EUA</td><td id="t-NU-pr">US$ 12,72</td><td id="t-NU-vd" class="pos">+2,3%</td><td>$17,02</td><td id="t-NU-pos">$25,44</td><td id="t-NU-res" class="pos">+$8,42</td><td id="t-NU-pct" class="pos">+49,5%</td></tr>
+          <tr><td><strong>TSM</strong></td><td>EUA</td><td id="t-TSM-pr">US$ 437,60</td><td id="t-TSM-vd" class="neg">-0,9%</td><td>$10,00</td><td id="t-TSM-pos">$14,82</td><td id="t-TSM-res" class="pos">+$4,82</td><td id="t-TSM-pct" class="pos">+48,2%</td></tr>
+          <tr><td><strong>SPCX</strong></td><td>EUA</td><td id="t-SPCX-pr">US$ 222,38</td><td id="t-SPCX-vd" class="pos">+15,5%</td><td>$40,00</td><td id="t-SPCX-pos">$50,95</td><td id="t-SPCX-res" class="pos">+$10,95</td><td id="t-SPCX-pct" class="pos">+27,4%</td></tr>
+          <tr><td><strong>ITSA4</strong></td><td>BR</td><td id="t-ITSA4SA-pr">R$ 12,73</td><td id="t-ITSA4SA-vd" class="pos">+0,2%</td><td>R$954,00</td><td id="t-ITSA4SA-pos">R$1.273,00</td><td id="t-ITSA4SA-res" class="pos">+R$223,60</td><td id="t-ITSA4SA-pct" class="pos">+21,3%</td></tr>
+          <tr><td><strong>TAEE11</strong></td><td>BR</td><td id="t-TAEE11SA-pr">R$ 39,22</td><td id="t-TAEE11SA-vd" class="neg">-0,7%</td><td>R$358,90</td><td id="t-TAEE11SA-pos">R$392,20</td><td id="t-TAEE11SA-res" class="pos">+R$33,30</td><td id="t-TAEE11SA-pct" class="pos">+9,3%</td></tr>
+          <tr><td><strong>WEGE3</strong></td><td>BR</td><td id="t-WEGE3SA-pr">R$ 42,66</td><td id="t-WEGE3SA-vd" class="neg">-0,3%</td><td>R$806,80</td><td id="t-WEGE3SA-pos">R$853,20</td><td id="t-WEGE3SA-res" class="pos">+R$46,40</td><td id="t-WEGE3SA-pct" class="pos">+5,8%</td></tr>
         </tbody>
       </table>
     </div>
@@ -200,7 +201,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <span id="txt-eua">Verificando status...</span>
   </div>
 
-  <div class="sec">Mercado EUA — semana de 02 a 06/06/2026</div>
+  <div class="sec">Mercado EUA — 16/06/2026</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.454</div><div class="mac-s pos">-0,49% ter</div></div>
     <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.678</div><div class="mac-s pos">+0,16% sex</div></div>
@@ -244,7 +245,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Posições EUA — fechamento 06/06/2026</div>
   <div class="mgrid">
     <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">US$ 625,08</div></div>
-    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">US$ 805,35</div></div>
+    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">US$ 814,61</div></div>
     <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+US$ 180,27</div></div>
     <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+24,9%</div></div>
   </div>
@@ -484,7 +485,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
   <div class="ativo">
     <div class="ah" onclick="tg('spcx')">
-      <div class="aleft"><div class="tb">SPCX</div><div><div class="an">S&P 500 Index ETF</div><div class="as">ETF / Índice — NYSE</div></div></div>
+      <div class="aleft"><div class="tb">SPCX</div><div><div class="an">SpaceX — Space Exploration Technologies</div><div class="as">Aeroespacial / IA / Starlink — NASDAQ</div></div></div>
       <div class="aright">
         <div><div class="pr">US$ 222,38</div><div class="pm">0,229 ações · PM US$174,57</div></div>
         <span class="vb vp">+15,5%</span>
@@ -504,14 +505,16 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
           <div class="kv"><span class="kk">Var. dia</span><span class="vv">—</span></div>
         </div>
         <div class="dc"><div class="ds">Análise</div>
-          <div class="kv"><span class="kk">Tipo</span><span class="vv">ETF S&P 500</span></div>
-          <div class="kv"><span class="kk">Exposição</span><span class="vv pos">500 maiores empresas EUA</span></div>
-          <div class="kv"><span class="kk">Diversificação</span><span class="vv pos">Máxima</span></div>
-          <div class="kv"><span class="kk">Risco</span><span class="vv pos">Baixo para B&H</span></div>
+          <div class="kv"><span class="kk">IPO</span><span class="vv pos">12/06/2026 · US$135/ação</span></div>
+          <div class="kv"><span class="kk">Valuation</span><span class="vv pos">~US$2,44 trilhões</span></div>
+          <div class="kv"><span class="kk">CEO</span><span class="vv">Elon Musk</span></div>
+          <div class="kv"><span class="kk">Segmentos</span><span class="vv pos">Foguetes · Starlink · xAI · X</span></div>
+          <div class="kv"><span class="kk">Target analistas</span><span class="vv">US$164 (Buy)</span></div>
+          <div class="kv"><span class="kk">Próximo earnings</span><span class="vv">02/09/2026</span></div>
         </div>
         <div class="dc"><div class="ds">Veredicto B&H</div>
           <span class="pill pbuy">Manter — excelente</span>
-          <div class="vtxt">ETF com exposição ao S&P 500. Ideal para buy and hold de longo prazo — diversificação máxima com custo baixo. Manter e aportar regularmente.</div>
+          <div class="vtxt">IPO histórico em 12/06/2026 a US$135 — já +64% desde o IPO. Starlink é o único segmento lucrativo hoje. xAI (Grok) e data centers espaciais são os catalisadores de longo prazo. Elon Musk detém 42% das ações e 79% do controle de voto. Alta especulativa no curto prazo — manter para o longo prazo.</div>
         </div>
       </div>
     </div>
@@ -562,7 +565,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Posições Brasil</div>
   <div class="mgrid">
     <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">R$ 2.119,70</div></div>
-    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">R$ 2.518,30</div></div>
+    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">R$ 2.518,40</div></div>
     <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 398,60</div></div>
     <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+18,8%</div></div>
   </div>
@@ -681,6 +684,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
           <tr><td>9</td><td><strong>TAEE11</strong></td><td class="pos">+8,4%</td><td class="neu">—</td><td>BB elevou p/ COMPRA · alvo R$42,60</td><td><span class="pill pbuy">Manter</span></td></tr>
           <tr><td>10</td><td><strong>LMT</strong></td><td class="pos">+8,5%</td><td class="pos">+0,2%</td><td>Beta negativo · div Q2 $3,45 · defensivo</td><td><span class="pill pbuy">Manter</span></td></tr>
           <tr><td>11</td><td><strong>WEGE3</strong></td><td class="pos">+2,9%</td><td class="neu">—</td><td>2026 fraco · aguardar reaceleração 2027</td><td><span class="pill phold">Manter</span></td></tr>
+          <tr><td>12</td><td><strong>SPCX</strong></td><td class="pos">+27,4%</td><td class="pos">+15,5%</td><td>IPO 12/06/26 · Starlink · xAI · valuation $2,44T</td><td><span class="pill pbuy">Manter</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -952,6 +956,51 @@ function renderRT(){
   // Atualizar dólar nos cards de macro
   setEl('idx-dolar-val',  'R$ '+rtDolar.toFixed(3));
   setEl('idx-dolar-val2', 'R$ '+rtDolar.toFixed(3));
+
+  // Atualizar tabela consolidada
+  updateTabela();
+}
+
+function updateTabela(){
+  const tCart = {
+    'NVDA':     {qtd:0.49003, pm:103.21, m:'USD', sym:'NVDA'},
+    'AMZN':     {qtd:0.20138, pm:173.67, m:'USD', sym:'AMZN'},
+    'TSLA':     {qtd:0.18789, pm:279.46, m:'USD', sym:'TSLA'},
+    'LMT':      {qtd:0.3126,  pm:479.75, m:'USD', sym:'LMT'},
+    'NU':       {qtd:2.0,     pm:8.51,   m:'USD', sym:'NU'},
+    'REGN':     {qtd:0.3929,  pm:534.66, m:'USD', sym:'REGN'},
+    'TSM':      {qtd:0.03386, pm:295.25, m:'USD', sym:'TSM'},
+    'IAU':      {qtd:1.00191, pm:59.86,  m:'USD', sym:'IAU'},
+    'SPCX':     {qtd:0.22912, pm:174.57, m:'USD', sym:'SPCX'},
+    'WEGE3.SA': {qtd:20,      pm:40.34,  m:'BRL', sym:'WEGE3SA'},
+    'ITSA4.SA': {qtd:100,     pm:9.54,   m:'BRL', sym:'ITSA4SA'},
+    'TAEE11.SA':{qtd:10,      pm:35.89,  m:'BRL', sym:'TAEE11SA'},
+  };
+  Object.entries(tCart).forEach(([sym, info])=>{
+    const q = QT[sym]; if(!q) return;
+    const p   = q.regularMarketPrice;
+    const vp  = q.regularMarketChangePercent || 0;
+    const pos = p * info.qtd;
+    const cst = info.pm * info.qtd;
+    const res = pos - cst;
+    const pct = ((pos - cst) / cst) * 100;
+    const id  = info.sym;
+
+    const prEl = document.getElementById('t-'+id+'-pr');
+    if(prEl) prEl.textContent = info.m==='USD' ? fU(p) : fB(p);
+
+    const vdEl = document.getElementById('t-'+id+'-vd');
+    if(vdEl){ vdEl.textContent=(vp>=0?'+':'')+fn(vp)+'%'; vdEl.className=vp>=0?'pos':'neg'; }
+
+    const posEl = document.getElementById('t-'+id+'-pos');
+    if(posEl) posEl.textContent = info.m==='USD' ? fU(pos) : fB(pos);
+
+    const resEl = document.getElementById('t-'+id+'-res');
+    if(resEl){ resEl.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res)); resEl.className=res>=0?'pos':'neg'; }
+
+    const pctEl = document.getElementById('t-'+id+'-pct');
+    if(pctEl){ pctEl.textContent=(pct>=0?'+':'')+fn(pct)+'%'; pctEl.className=pct>=0?'pos':'neg'; }
+  });
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
