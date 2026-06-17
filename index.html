@@ -73,6 +73,11 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 .nb-neu{background:#f0f0ee;color:#555}.nb-info{background:#e6f1fb;color:#0c447c}
 .news-text{font-size:11px;line-height:1.5;color:#333}
 .news-date{font-size:10px;color:#aaa;margin-top:2px}
+.news-section-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.news-toggle{font-size:11px;color:#888;padding:3px 9px;border-radius:20px;border:1px solid #ddd;background:#fff;cursor:pointer;flex-shrink:0}
+.news-toggle:hover{background:#f0f0ee}
+.news-body{transition:max-height .2s ease}
+.news-body.collapsed{display:none}
 .tbl{width:100%;border-collapse:collapse;font-size:11px}
 .tbl th{text-align:left;padding:5px 9px;font-size:10px;font-weight:700;text-transform:uppercase;color:#888;border-bottom:1px solid #eee}
 .tbl td{padding:7px 9px;border-bottom:1px solid #f3f3f0}
@@ -125,6 +130,38 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 .badge-date{display:inline-block;background:#534AB7;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:4px;vertical-align:middle}
 @media(max-width:580px){.dg{grid-template-columns:1fr}.dc{border-right:none;border-bottom:1px solid #eee}.dc:last-child{border-bottom:none}.fin-grid{grid-template-columns:1fr}.fin-row{grid-template-columns:1fr}.aright{gap:6px}}
 </style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAviAWydDX0Eka6N5rxL2byvFqoqy9qS-A",
+    authDomain: "monitor-financeiro-5c1ff.firebaseapp.com",
+    databaseURL: "https://monitor-financeiro-5c1ff-default-rtdb.firebaseio.com",
+    projectId: "monitor-financeiro-5c1ff",
+    storageBucket: "monitor-financeiro-5c1ff.firebasestorage.app",
+    messagingSenderId: "844791461365",
+    appId: "1:844791461365:web:9023da0614d91d11bf5cbc"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+  const fbDB  = getDatabase(fbApp);
+  const lancRef = ref(fbDB, 'lancamentos');
+
+  window.fbSalvarLancamentos = function(arr){
+    set(lancRef, arr).catch(e=>console.error('Erro ao salvar no Firebase:', e));
+  };
+
+  window.fbOuvirLancamentos = function(callback){
+    onValue(lancRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(Array.isArray(data) ? data : (data ? Object.values(data) : []));
+    }, (error) => {
+      console.error('Erro ao ler do Firebase:', error);
+      callback(null);
+    });
+  };
+</script>
 </head>
 <body>
 
@@ -211,7 +248,11 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div class="news-section">
-    <div class="news-title">📰 Destaques da semana — seus ativos EUA</div>
+    <div class="news-section-header" onclick="toggleNews('news-eua')">
+      <div class="news-title">📰 Destaques da semana — seus ativos EUA</div>
+      <button class="news-toggle" id="news-eua-btn">▼ Minimizar</button>
+    </div>
+    <div class="news-body" id="news-eua">
     <div class="news-item">
       <span class="news-badge nb-neg">NVDA -1,5%</span>
       <div><div class="news-text">Semana pressionada por sell-off em chips após resultados da Broadcom. Mas NVDA recuperou +1,7% na sexta. Revenue FY26: US$215,9bi (+65%). Target médio dos analistas: US$298,42 (+46% de upside). Próximo earnings: 26/08/2026. ATH: US$236,54 (mai/26).</div><div class="news-date">06/06/2026 — StockAnalysis / Robinhood</div></div>
@@ -239,6 +280,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="news-item">
       <span class="news-badge nb-pos">LMT +0,2% / IAU +0,5%</span>
       <div><div class="news-text">LMT segue resiliente: contrato de US$879M firmado, dividendo Q2 de US$3,45/ação. IAU em US$85,22, +42% desde o PM da carteira. Ouro recuou com alívio geopolítico EUA-Irã mas mantém tendência de alta estrutural.</div><div class="news-date">06/06/2026</div></div>
+    </div>
     </div>
   </div>
 
@@ -539,7 +581,11 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div class="news-section">
-    <div class="news-title">📰 Destaques — seus ativos BR e macro</div>
+    <div class="news-section-header" onclick="toggleNews('news-br')">
+      <div class="news-title">📰 Destaques — seus ativos BR e macro</div>
+      <button class="news-toggle" id="news-br-btn">▼ Minimizar</button>
+    </div>
+    <div class="news-body" id="news-br">
     <div class="news-item">
       <span class="news-badge nb-pos">ITSA4</span>
       <div><div class="news-text">JCP de R$0,06/ação com data-com em 11/06/2026 — próxima semana. Entra na Carteira BB Dividendos de junho. DY 12m: 9,59%. Selic em 14,5% continua favorecendo Itaú. Suporte: R$11,50. Resistência: R$13,50.</div><div class="news-date">Jun/2026 — BB Investimentos / Investidor10</div></div>
@@ -559,6 +605,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="news-item">
       <span class="news-badge nb-info">Atenção: 11/06</span>
       <div><div class="news-text">Segunda-feira 11/06 é data-com do JCP da ITSA4 (R$0,06/ação) e data-ex do dividendo da TSM (US$0,955). Quem tiver as ações até o fechamento de sexta 06/06 já tem direito a ambos os proventos.</div><div class="news-date">Calendário de proventos</div></div>
+    </div>
     </div>
   </div>
 
@@ -673,18 +720,18 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       <table class="tbl">
         <thead><tr><th>#</th><th>Ativo</th><th>Resultado</th><th>Semana</th><th>Perspectiva</th><th>Ação</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td><strong>NVDA</strong></td><td class="pos">+97,7%</td><td class="neg">-1,5%</td><td>Strong Buy · Revenue +65% · target +46%</td><td><span class="pill pbuy">Manter</span></td></tr>
-          <tr><td>2</td><td><strong>IAU</strong></td><td class="pos">+42,4%</td><td class="pos">+0,5%</td><td>Único ativo positivo na sex · hedge ideal</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
-          <tr><td>3</td><td><strong>AMZN</strong></td><td class="pos">+41,5%</td><td class="neg">-1,0%</td><td>AWS +17% · Prime Day 23/06 · target +27%</td><td><span class="pill pbuy">Manter</span></td></tr>
-          <tr><td>4</td><td><strong>NU</strong></td><td class="pos">+40,9%</td><td class="neg">-1,6%</td><td>Buyback $1bi · suporte $11,80 · upside +54%</td><td><span class="pill phold">Aguardar</span></td></tr>
-          <tr><td>5</td><td><strong>TSLA</strong></td><td class="pos">+40,0%</td><td class="neg">-7,9%</td><td>3 upgrades na semana · EVs +16% global</td><td><span class="pill phold">Manter</span></td></tr>
-          <tr><td>6</td><td><strong>TSM</strong></td><td class="pos">+40,6%</td><td class="neg">-6,7%</td><td>Ex-div 11/06 · market cap $1,95T · target +12%</td><td><span class="pill pbuy">Manter</span></td></tr>
-          <tr><td>7</td><td><strong>ITSA4</strong></td><td class="pos">+33,3%</td><td class="neu">—</td><td>JCP data-com 11/06 · DY 9,59% · BB Dividendos</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
-          <tr><td>8</td><td><strong>REGN</strong></td><td class="pos">+19,6%</td><td class="neg">-11,1%</td><td>P/E 15x (mínimo histórico) · target +31%</td><td><span class="pill pbuy">Manter — oport.</span></td></tr>
-          <tr><td>9</td><td><strong>TAEE11</strong></td><td class="pos">+8,4%</td><td class="neu">—</td><td>BB elevou p/ COMPRA · alvo R$42,60</td><td><span class="pill pbuy">Manter</span></td></tr>
-          <tr><td>10</td><td><strong>LMT</strong></td><td class="pos">+8,5%</td><td class="pos">+0,2%</td><td>Beta negativo · div Q2 $3,45 · defensivo</td><td><span class="pill pbuy">Manter</span></td></tr>
-          <tr><td>11</td><td><strong>WEGE3</strong></td><td class="pos">+2,9%</td><td class="neu">—</td><td>2026 fraco · aguardar reaceleração 2027</td><td><span class="pill phold">Manter</span></td></tr>
-          <tr><td>12</td><td><strong>SPCX</strong></td><td class="pos">+27,4%</td><td class="pos">+15,5%</td><td>IPO 12/06/26 · Starlink · xAI · valuation $2,44T</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>1</td><td><strong>NVDA</strong></td><td id="rk-NVDA-res" class="pos">+103,2%</td><td id="rk-NVDA-sem" class="neg">-1,3%</td><td>Strong Buy · Revenue +65% · target +46%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>2</td><td><strong>IAU</strong></td><td id="rk-IAU-res" class="pos">+36,2%</td><td id="rk-IAU-sem" class="pos">+0,3%</td><td>Único ativo positivo na sex · hedge ideal</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
+          <tr><td>3</td><td><strong>AMZN</strong></td><td id="rk-AMZN-res" class="pos">+41,8%</td><td id="rk-AMZN-sem" class="pos">+0,1%</td><td>AWS +17% · Prime Day 23/06 · target +27%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>4</td><td><strong>NU</strong></td><td id="rk-NU-res" class="pos">+49,5%</td><td id="rk-NU-sem" class="pos">+2,3%</td><td>Buyback $1bi · suporte $11,80 · upside +54%</td><td><span class="pill phold">Aguardar</span></td></tr>
+          <tr><td>5</td><td><strong>TSLA</strong></td><td id="rk-TSLA-res" class="pos">+46,7%</td><td id="rk-TSLA-sem" class="neg">-0,3%</td><td>3 upgrades na semana · EVs +16% global</td><td><span class="pill phold">Manter</span></td></tr>
+          <tr><td>6</td><td><strong>TSM</strong></td><td id="rk-TSM-res" class="pos">+48,2%</td><td id="rk-TSM-sem" class="neg">-0,9%</td><td>Ex-div 11/06 · market cap $1,95T · target +12%</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>7</td><td><strong>ITSA4</strong></td><td id="rk-ITSA4SA-res" class="pos">+21,3%</td><td id="rk-ITSA4SA-sem" class="pos">+0,2%</td><td>JCP data-com 11/06 · DY 9,59% · BB Dividendos</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
+          <tr><td>8</td><td><strong>REGN</strong></td><td id="rk-REGN-res" class="pos">+13,4%</td><td id="rk-REGN-sem" class="pos">+0,8%</td><td>P/E 15x (mínimo histórico) · target +31%</td><td><span class="pill pbuy">Manter — oport.</span></td></tr>
+          <tr><td>9</td><td><strong>TAEE11</strong></td><td id="rk-TAEE11SA-res" class="pos">+9,3%</td><td id="rk-TAEE11SA-sem" class="neg">-0,7%</td><td>BB elevou p/ COMPRA · alvo R$42,60</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>10</td><td><strong>LMT</strong></td><td id="rk-LMT-res" class="pos">+10,4%</td><td id="rk-LMT-sem" class="neg">-0,1%</td><td>Beta negativo · div Q2 $3,45 · defensivo</td><td><span class="pill pbuy">Manter</span></td></tr>
+          <tr><td>11</td><td><strong>WEGE3</strong></td><td id="rk-WEGE3SA-res" class="pos">+5,8%</td><td id="rk-WEGE3SA-sem" class="neg">-0,3%</td><td>2026 fraco · aguardar reaceleração 2027</td><td><span class="pill phold">Manter</span></td></tr>
+          <tr><td>12</td><td><strong>SPCX</strong></td><td id="rk-SPCX-res" class="pos">+27,4%</td><td id="rk-SPCX-sem" class="pos">+15,5%</td><td>IPO 12/06/26 · Starlink · xAI · valuation $2,44T</td><td><span class="pill pbuy">Manter</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -700,6 +747,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
 <!-- ═══════════════ FINANÇAS PESSOAIS ═══════════════ -->
 <div id="p-financas" class="panel">
+  <div style="text-align:right;font-size:11px;margin-bottom:8px" id="fin-sync-status">⏳ Conectando...</div>
   <div class="mes-nav">
     <button class="mes-btn" onclick="mudarMes(-1)">◀</button>
     <div class="mes-label" id="mes-label">—</div>
@@ -768,6 +816,20 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 <script>
 function st(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.getElementById('p-'+id).classList.add('on');el.classList.add('on');}
 function tg(id){const d=document.getElementById(id);const c=document.getElementById('c-'+id);const o=d.classList.contains('op');d.classList.toggle('op',!o);if(c)c.style.transform=o?'':'rotate(180deg)';}
+function toggleNews(id){const body=document.getElementById(id);const btn=document.getElementById(id+'-btn');const collapsed=body.classList.contains('collapsed');body.classList.toggle('collapsed',!collapsed);if(btn)btn.textContent=collapsed?'▼ Minimizar':'▶ Expandir';try{localStorage.setItem('news_'+id,collapsed?'open':'closed');}catch(e){}}
+window.addEventListener('DOMContentLoaded',()=>{
+  ['news-eua','news-br'].forEach(id=>{
+    try{
+      const state=localStorage.getItem('news_'+id);
+      if(state==='closed'){
+        const body=document.getElementById(id);
+        const btn=document.getElementById(id+'-btn');
+        if(body)body.classList.add('collapsed');
+        if(btn)btn.textContent='▶ Expandir';
+      }
+    }catch(e){}
+  });
+});
 let vH=false;
 function toggleValues(){vH=!vH;const label=document.getElementById('hide-label');const eye=document.getElementById('eye-txt');document.querySelectorAll('.mc-v,.mc-s,.res,.pr,.pm,.vv,.mac-v,.mac-s,.rm-v,.lanc-val').forEach(el=>el.classList.toggle('hidden-val',vH));label.textContent=vH?'Mostrar valores':'Ocultar valores';eye.textContent=vH?'🙈':'👁';}
 function checkMarkets(){const now=new Date();const nyNow=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));const nyDay=nyNow.getDay();const nyT=nyNow.getHours()*60+nyNow.getMinutes();let eS,eC,eD,eDt;if(nyDay===0||nyDay===6){eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Fim de semana — abre segunda 09:30 ET';}else if(nyT>=570&&nyT<960){eS='🟢 NYSE/NASDAQ aberto';eC='mkt-open';eD='dot-open';const c=960-nyT;eDt='Fecha em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=240&&nyT<570){eS='🟡 Pré-mercado EUA';eC='mkt-pre';eD='dot-pre';const c=570-nyT;eDt='Abre em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=960&&nyT<1200){eS='🟡 Pós-mercado EUA';eC='mkt-pre';eD='dot-pre';eDt='After hours até 20:00 ET';}else{eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Abre às 09:30 ET';}
@@ -776,9 +838,31 @@ const se=document.getElementById('status-eua');if(se){se.className='mkt-status '
 const sb=document.getElementById('status-br');if(sb){sb.className='mkt-status '+bC;document.getElementById('dot-br').className='mkt-dot '+bD;document.getElementById('txt-br').innerHTML=bS+' <span class="mkt-detail">— '+bDt+'</span>';}}
 checkMarkets();setInterval(checkMarkets,60000);
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[];
-try{lancamentos=JSON.parse(localStorage.getItem('fin_lanc')||'[]');}catch(e){lancamentos=[];}
-function salvar(){try{localStorage.setItem('fin_lanc',JSON.stringify(lancamentos));}catch(e){}}
+let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[],fbSincronizado=false;
+function salvar(){
+  if(window.fbSalvarLancamentos) window.fbSalvarLancamentos(lancamentos);
+}
+function iniciarSyncFinancas(){
+  if(window.fbOuvirLancamentos){
+    window.fbOuvirLancamentos((dados)=>{
+      if(dados!==null){
+        lancamentos=dados;
+        fbSincronizado=true;
+        setSyncStatus('✅ Sincronizado', '#27ae60');
+        renderFinancas();
+      } else {
+        setSyncStatus('⚠️ Erro de sincronização — usando dados locais', '#854F0B');
+      }
+    });
+  } else {
+    setTimeout(iniciarSyncFinancas, 300);
+  }
+}
+function setSyncStatus(msg, color){
+  const el = document.getElementById('fin-sync-status');
+  if(el){ el.textContent = msg; el.style.color = color; }
+}
+iniciarSyncFinancas();
 function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}renderFinancas();}
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status});salvar();['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
@@ -959,6 +1043,39 @@ function renderRT(){
 
   // Atualizar tabela consolidada
   updateTabela();
+  updateRanking();
+}
+
+function updateRanking(){
+  const rCart = {
+    'NVDA':     {qtd:0.49003, pm:103.21, m:'USD', sym:'NVDA'},
+    'AMZN':     {qtd:0.20138, pm:173.67, m:'USD', sym:'AMZN'},
+    'TSLA':     {qtd:0.18789, pm:279.46, m:'USD', sym:'TSLA'},
+    'LMT':      {qtd:0.3126,  pm:479.75, m:'USD', sym:'LMT'},
+    'NU':       {qtd:2.0,     pm:8.51,   m:'USD', sym:'NU'},
+    'REGN':     {qtd:0.3929,  pm:534.66, m:'USD', sym:'REGN'},
+    'TSM':      {qtd:0.03386, pm:295.25, m:'USD', sym:'TSM'},
+    'IAU':      {qtd:1.00191, pm:59.86,  m:'USD', sym:'IAU'},
+    'SPCX':     {qtd:0.22912, pm:174.57, m:'USD', sym:'SPCX'},
+    'WEGE3.SA': {qtd:20,      pm:40.34,  m:'BRL', sym:'WEGE3SA'},
+    'ITSA4.SA': {qtd:100,     pm:9.54,   m:'BRL', sym:'ITSA4SA'},
+    'TAEE11.SA':{qtd:10,      pm:35.89,  m:'BRL', sym:'TAEE11SA'},
+  };
+  Object.entries(rCart).forEach(([sym, info])=>{
+    const q = QT[sym]; if(!q) return;
+    const p   = q.regularMarketPrice;
+    const vp  = q.regularMarketChangePercent || 0;
+    const pos = p * info.qtd;
+    const cst = info.pm * info.qtd;
+    const pct = ((pos - cst) / cst) * 100;
+    const id  = info.sym;
+
+    const resEl = document.getElementById('rk-'+id+'-res');
+    if(resEl){ resEl.textContent=(pct>=0?'+':'')+fn(pct)+'%'; resEl.className=pct>=0?'pos':'neg'; }
+
+    const semEl = document.getElementById('rk-'+id+'-sem');
+    if(semEl){ semEl.textContent=(vp>=0?'+':'')+fn(vp)+'%'; semEl.className=vp>=0?'pos':'neg'; }
+  });
 }
 
 function updateTabela(){
