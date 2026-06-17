@@ -150,7 +150,12 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   const lancRef = ref(fbDB, 'lancamentos');
 
   window.fbSalvarLancamentos = function(arr){
-    set(lancRef, arr).catch(e=>console.error('Erro ao salvar no Firebase:', e));
+    set(lancRef, arr)
+      .then(()=>{ console.log('✅ Salvo no Firebase com sucesso:', arr.length, 'lançamentos'); })
+      .catch(e=>{
+        console.error('❌ Erro ao salvar no Firebase:', e.code, e.message);
+        alert('Erro ao salvar no Firebase: '+e.code+' — '+e.message);
+      });
   };
 
   window.fbOuvirLancamentos = function(callback){
@@ -173,7 +178,24 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     return signOut(fbAuth);
   };
 
+  window.fbFazerBackup = function(dados){
+    const ts = Date.now();
+    const backupRef = ref(fbDB, 'backups/' + ts);
+    return set(backupRef, { data: dados, criadoEm: new Date().toISOString() })
+      .then(()=>{
+        localStorage.setItem('ultimo_backup', String(ts));
+        return ts;
+      });
+  };
+
+  window.fbGetUltimoBackupTs = function(){
+    const v = localStorage.getItem('ultimo_backup');
+    return v ? parseInt(v, 10) : null;
+  };
+
   onAuthStateChanged(fbAuth, (user) => {
+    window._fbLastAuthUser = user;
+    window._fbAuthReady = true;
     if(typeof window.onFbAuthChange === 'function'){
       window.onFbAuthChange(user);
     }
@@ -773,9 +795,13 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div id="fin-login-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
   </div>
   <div id="fin-content" style="display:none">
-  <div style="text-align:right;font-size:11px;margin-bottom:8px">
-    <span id="fin-sync-status">⏳ Conectando...</span>
-    <button onclick="fazerLogoutFinancas()" style="margin-left:10px;font-size:11px;background:none;border:1px solid #ddd;border-radius:14px;padding:2px 10px;cursor:pointer">Sair</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+    <div style="font-size:11px;color:#888" id="backup-status">📦 Último backup: nunca</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="fazerBackupManual()" style="font-size:11px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:4px 12px;cursor:pointer">📦 Fazer backup agora</button>
+      <span id="fin-sync-status">⏳ Conectando...</span>
+      <button onclick="fazerLogoutFinancas()" style="font-size:11px;background:none;border:1px solid #ddd;border-radius:14px;padding:2px 10px;cursor:pointer">Sair</button>
+    </div>
   </div>
   <div class="mes-nav">
     <button class="mes-btn" onclick="mudarMes(-1)">◀</button>
@@ -879,6 +905,7 @@ function iniciarSyncFinancas(){
         fbSincronizado=true;
         setSyncStatus('✅ Sincronizado', '#27ae60');
         renderFinancas();
+        checarBackupAutomatico();
       } else {
         setSyncStatus('⚠️ Erro de sincronização', '#854F0B');
       }
@@ -905,6 +932,11 @@ window.onFbAuthChange = function(user){
   }
 };
 
+// Caso o evento de autenticação já tenha disparado antes deste script carregar
+if(window._fbAuthReady){
+  window.onFbAuthChange(window._fbLastAuthUser);
+}
+
 window.fazerLoginFinancas = function(){
   const email = document.getElementById('fin-login-email').value.trim();
   const senha = document.getElementById('fin-login-senha').value;
@@ -921,6 +953,50 @@ window.fazerLoginFinancas = function(){
 window.fazerLogoutFinancas = function(){
   if(window.fbLogout) window.fbLogout();
 };
+
+function fmtDataBackup(ts){
+  const d = new Date(ts);
+  const dia = String(d.getDate()).padStart(2,'0');
+  const mes = String(d.getMonth()+1).padStart(2,'0');
+  const ano = d.getFullYear();
+  const hh  = String(d.getHours()).padStart(2,'0');
+  const mm  = String(d.getMinutes()).padStart(2,'0');
+  return `${dia}/${mes}/${ano} ${hh}:${mm}`;
+}
+
+function atualizarStatusBackup(){
+  const el = document.getElementById('backup-status');
+  if(!el) return;
+  const ts = window.fbGetUltimoBackupTs ? window.fbGetUltimoBackupTs() : null;
+  el.textContent = ts ? ('📦 Último backup: '+fmtDataBackup(ts)) : '📦 Último backup: nunca';
+}
+
+window.fazerBackupManual = function(){
+  const el = document.getElementById('backup-status');
+  if(el) el.textContent = '📦 Salvando backup...';
+  if(window.fbFazerBackup){
+    window.fbFazerBackup(lancamentos).then(()=>{
+      atualizarStatusBackup();
+    }).catch(e=>{
+      if(el) el.textContent = '⚠️ Erro ao fazer backup';
+      console.error('Erro no backup:', e);
+    });
+  }
+};
+
+function checarBackupAutomatico(){
+  const ts = window.fbGetUltimoBackupTs ? window.fbGetUltimoBackupTs() : null;
+  const umDiaMs = 24*60*60*1000;
+  if(!ts || (Date.now() - ts) > umDiaMs){
+    if(lancamentos && lancamentos.length > 0 && window.fbFazerBackup){
+      window.fbFazerBackup(lancamentos).then(()=>{
+        atualizarStatusBackup();
+        console.log('✅ Backup automático diário realizado');
+      });
+    }
+  }
+  atualizarStatusBackup();
+}
 function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}renderFinancas();}
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status});salvar();['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
