@@ -168,6 +168,22 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     });
   };
 
+  const modelosRef = ref(fbDB, 'modelosRecorrentes');
+
+  window.fbSalvarModelos = function(arr){
+    set(modelosRef, arr).catch(e=>console.error('Erro ao salvar modelos:', e));
+  };
+
+  window.fbOuvirModelos = function(callback){
+    onValue(modelosRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(Array.isArray(data) ? data : (data ? Object.values(data) : []));
+    }, (error) => {
+      console.error('Erro ao ler modelos:', error);
+      callback(null);
+    });
+  };
+
   const fbAuth = getAuth(fbApp);
 
   window.fbLogin = function(email, senha){
@@ -831,6 +847,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option value="recebido">✅ Recebido</option>
         <option value="pendente">⏳ A receber</option>
       </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin:6px 0;cursor:pointer">
+        <input type="checkbox" id="rec-recorrente" style="width:auto;margin:0">
+        🔁 Repetir todo mês
+      </label>
       <button class="btn-add rec" onclick="addLanc('rec')">+ Adicionar receita</button>
     </div>
     <div class="fin-form">
@@ -851,6 +871,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option value="pendente">⏳ A pagar</option>
         <option value="atrasado">🔴 Atrasado</option>
       </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#666;margin:6px 0;cursor:pointer">
+        <input type="checkbox" id="pag-recorrente" style="width:auto;margin:0">
+        🔁 Repetir todo mês
+      </label>
       <button class="btn-add" onclick="addLanc('pag')">+ Adicionar despesa</button>
     </div>
   </div>
@@ -893,26 +917,66 @@ const se=document.getElementById('status-eua');if(se){se.className='mkt-status '
 const sb=document.getElementById('status-br');if(sb){sb.className='mkt-status '+bC;document.getElementById('dot-br').className='mkt-dot '+bD;document.getElementById('txt-br').innerHTML=bS+' <span class="mkt-detail">— '+bDt+'</span>';}}
 checkMarkets();setInterval(checkMarkets,60000);
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[],fbSincronizado=false;
+let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[],modelosRecorrentes=[],fbSincronizado=false;
 function salvar(){
   if(window.fbSalvarLancamentos) window.fbSalvarLancamentos(lancamentos);
 }
+function salvarModelos(){
+  if(window.fbSalvarModelos) window.fbSalvarModelos(modelosRecorrentes);
+}
+let modelosCarregados = false;
 function iniciarSyncFinancas(){
-  if(window.fbOuvirLancamentos){
+  if(window.fbOuvirLancamentos && window.fbOuvirModelos){
     window.fbOuvirLancamentos((dados)=>{
       if(dados!==null){
         lancamentos=dados;
         fbSincronizado=true;
         setSyncStatus('✅ Sincronizado', '#27ae60');
+        gerarLancamentosRecorrentesDoMes();
         renderFinancas();
         checarBackupAutomatico();
       } else {
         setSyncStatus('⚠️ Erro de sincronização', '#854F0B');
       }
     });
+    window.fbOuvirModelos((dados)=>{
+      modelosRecorrentes = dados || [];
+      modelosCarregados = true;
+      gerarLancamentosRecorrentesDoMes();
+      renderFinancas();
+    });
   } else {
     setTimeout(iniciarSyncFinancas, 300);
   }
+}
+
+function gerarLancamentosRecorrentesDoMes(){
+  if(!modelosCarregados || !modelosRecorrentes.length) return;
+  let criouAlgum = false;
+  modelosRecorrentes.forEach(modelo=>{
+    const jaExiste = lancamentos.some(l=>{
+      if(l.recId !== modelo.id) return false;
+      const d = new Date(l.data+'T12:00:00');
+      return d.getMonth()===mesAtual && d.getFullYear()===anoAtual;
+    });
+    const criadoEmDate = new Date(modelo.criadoEm+'T12:00:00');
+    const aposOuNoMesDeCricao = (anoAtual > criadoEmDate.getFullYear()) ||
+      (anoAtual === criadoEmDate.getFullYear() && mesAtual >= criadoEmDate.getMonth());
+    if(!jaExiste && aposOuNoMesDeCricao){
+      const ultimoDiaDoMes = new Date(anoAtual, mesAtual+1, 0).getDate();
+      const dia = Math.min(modelo.dia, ultimoDiaDoMes);
+      const dataStr = anoAtual+'-'+String(mesAtual+1).padStart(2,'0')+'-'+String(dia).padStart(2,'0');
+      const statusInicial = modelo.tipo==='rec' ? 'pendente' : 'pendente';
+      lancamentos.push({
+        id: Date.now()+Math.floor(Math.random()*1000),
+        tipo: modelo.tipo, desc: modelo.desc, val: modelo.val,
+        data: dataStr, cat: modelo.cat, status: statusInicial,
+        recId: modelo.id
+      });
+      criouAlgum = true;
+    }
+  });
+  if(criouAlgum) salvar();
 }
 function setSyncStatus(msg, color){
   const el = document.getElementById('fin-sync-status');
@@ -997,14 +1061,25 @@ function checarBackupAutomatico(){
   }
   atualizarStatusBackup();
 }
-function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}renderFinancas();}
+function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}gerarLancamentosRecorrentesDoMes();renderFinancas();}
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status});salvar();['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
-function deletarLanc(id){if(!confirm('Remover?'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
+function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
+  const diaDoMes = new Date(data+'T12:00:00').getDate();
+  const recId = recorrente ? 'rec_'+Date.now() : null;
+  lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status,recId});
+  if(recorrente){
+    modelosRecorrentes.push({id:recId,tipo,desc,val,cat,status,dia:diaDoMes,criadoEm:data});
+    salvarModelos();
+  }
+  salvar();
+  ['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});
+  document.getElementById(tipo+'-recorrente').checked=false;
+  const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
+function deletarLanc(id){if(!confirm('Remover? (isso não afeta outros meses, mesmo se for recorrente)'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
 function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();}
-function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
+function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
 // ── COTAÇÕES EM TEMPO REAL ──────────────────────────────
