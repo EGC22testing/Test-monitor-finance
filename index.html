@@ -130,6 +130,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 .badge-date{display:inline-block;background:#534AB7;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:4px;vertical-align:middle}
 @media(max-width:580px){.dg{grid-template-columns:1fr}.dc{border-right:none;border-bottom:1px solid #eee}.dc:last-child{border-bottom:none}.fin-grid{grid-template-columns:1fr}.fin-row{grid-template-columns:1fr}.aright{gap:6px}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
@@ -257,7 +258,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.678</div><div class="mac-s pos">+0,16% sex</div></div>
     <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">169.813</div><div class="mac-s pos">+0,68% ter</div></div>
     <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,179</div><div class="mac-s neg">+5,7% no ano</div></div>
-    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,5%</div><div class="mac-s neg">Em queda gradual</div></div>
+    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v" id="bcb-selic-val1">14,5%</div><div class="mac-s neg">Em queda gradual</div></div>
     <div class="mac"><div class="mac-l">IPCA 2026E</div><div class="mac-v">5,09%</div><div class="mac-s neg">Acima do teto</div></div>
     <div class="mac"><div class="mac-l">IAU/Ouro</div><div class="mac-v">US$ 85,22</div><div class="mac-s pos">+42,4% vs PM</div></div>
   </div>
@@ -629,10 +630,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="macro-row">
     <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">169.813</div><div class="mac-s pos">+0,68% ter</div></div>
     <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,179</div><div class="mac-s neg">+5,7% no ano</div></div>
-    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,5%</div><div class="mac-s neg">Em queda</div></div>
-    <div class="mac"><div class="mac-l">IPCA 12m</div><div class="mac-v">4,39%</div><div class="mac-s neg">Meta: 3,0%</div></div>
+    <div class="mac"><div class="mac-l">Selic</div><div class="mac-v" id="bcb-selic-val2">14,5%</div><div class="mac-s neg">Em queda</div></div>
+    <div class="mac"><div class="mac-l">IPCA 12m</div><div class="mac-v" id="bcb-ipca12m-val">4,39%</div><div class="mac-s neg">Meta: 3,0%</div></div>
     <div class="mac"><div class="mac-l">IPCA 2026E</div><div class="mac-v">5,09%</div><div class="mac-s neg">Acima do teto</div></div>
-    <div class="mac"><div class="mac-l">CDI</div><div class="mac-v">~14,4%</div><div class="mac-s neu">Benchmark</div></div>
+    <div class="mac"><div class="mac-l">CDI</div><div class="mac-v" id="bcb-cdi-val">~14,4%</div><div class="mac-s neu">Benchmark</div></div>
   </div>
 
   <div class="news-section">
@@ -829,6 +830,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="rm"><div class="rm-l">Despesas</div><div class="rm-v neg" id="tot-pag">R$ 0</div></div>
     <div class="rm"><div class="rm-l">Saldo do mês</div><div class="rm-v" id="tot-saldo">R$ 0</div></div>
     <div class="rm"><div class="rm-l">Pendentes</div><div class="rm-v neu" id="tot-pend">R$ 0</div></div>
+  </div>
+  <div class="fin-form" style="margin-bottom:1.2rem">
+    <h3>📈 Evolução dos últimos 6 meses</h3>
+    <canvas id="grafico-evolucao" height="220"></canvas>
   </div>
   <div class="fin-grid">
     <div class="fin-form">
@@ -1062,6 +1067,45 @@ function checarBackupAutomatico(){
   atualizarStatusBackup();
 }
 function mudarMes(d){mesAtual+=d;if(mesAtual>11){mesAtual=0;anoAtual++;}if(mesAtual<0){mesAtual=11;anoAtual--;}gerarLancamentosRecorrentesDoMes();renderFinancas();}
+let graficoEvolucao=null;
+function renderGraficoEvolucao(){
+  const canvas=document.getElementById('grafico-evolucao');
+  if(!canvas||typeof Chart==='undefined') return;
+  const labels=[],receitas=[],despesas=[],saldos=[];
+  for(let i=5;i>=0;i--){
+    let m=mesAtual-i,a=anoAtual;
+    while(m<0){m+=12;a--;}
+    while(m>11){m-=12;a++;}
+    const lancsMes=lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===m&&d.getFullYear()===a;});
+    const rec=lancsMes.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+    const pag=lancsMes.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+    labels.push(MESES[m].slice(0,3)+'/'+String(a).slice(2));
+    receitas.push(rec);
+    despesas.push(pag);
+    saldos.push(rec-pag);
+  }
+  if(graficoEvolucao){
+    graficoEvolucao.data.labels=labels;
+    graficoEvolucao.data.datasets[0].data=receitas;
+    graficoEvolucao.data.datasets[1].data=despesas;
+    graficoEvolucao.data.datasets[2].data=saldos;
+    graficoEvolucao.update();
+    return;
+  }
+  graficoEvolucao=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {type:'bar',label:'Receitas',data:receitas,backgroundColor:'#27ae60'},
+      {type:'bar',label:'Despesas',data:despesas,backgroundColor:'#e74c3c'},
+      {type:'line',label:'Saldo',data:saldos,borderColor:'#534AB7',backgroundColor:'#534AB7',tension:.3,fill:false}
+    ]},
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{y:{ticks:{callback:v=>fmtBRLFin(v)}}}
+    }
+  });
+}
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
   const diaDoMes = new Date(data+'T12:00:00').getDate();
@@ -1078,7 +1122,7 @@ function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.tr
 function deletarLanc(id){if(!confirm('Remover? (isso não afeta outros meses, mesmo se for recorrente)'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
-function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();}
+function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();}
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
@@ -1142,6 +1186,27 @@ async function fetchRT(){
   }catch(err){
     console.warn('Erro Worker:', err);
     setStatus('⚠️ Worker indisponível. <a href="#" onclick="fetchRT();return false;" style="color:inherit;text-decoration:underline">Tentar novamente</a>','#e74c3c');
+  }
+}
+
+async function fetchBCB(){
+  try{
+    const [selic, ipca12m, cdi] = await Promise.all([
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json').then(r=>r.json()),
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json').then(r=>r.json()),
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4392/dados/ultimos/1?formato=json').then(r=>r.json())
+    ]);
+    const selicVal = selic?.[0]?.valor;
+    const ipcaVal = ipca12m?.[0]?.valor;
+    const cdiVal = cdi?.[0]?.valor;
+    if(selicVal){
+      setEl('bcb-selic-val1', parseFloat(selicVal).toFixed(2).replace('.',',')+'%');
+      setEl('bcb-selic-val2', parseFloat(selicVal).toFixed(2).replace('.',',')+'%');
+    }
+    if(ipcaVal) setEl('bcb-ipca12m-val', parseFloat(ipcaVal).toFixed(2).replace('.',',')+'%');
+    if(cdiVal) setEl('bcb-cdi-val', '~'+parseFloat(cdiVal).toFixed(2).replace('.',',')+'%');
+  }catch(err){
+    console.warn('Erro API BCB:', err);
   }
 }
 
@@ -1395,6 +1460,8 @@ window.addEventListener('DOMContentLoaded',()=>{
     sub.after(ts);
   }
   fetchRT();
+  fetchBCB();
+  setInterval(fetchBCB, 30*60*1000);
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
 
