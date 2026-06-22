@@ -1174,6 +1174,7 @@ async function fetchRT(){
 
     // Atualizar índices macro
     if(json.indices) updateIndices(json.indices);
+    if(json.bcb) updateBCB(json.bcb);
 
     renderRT();
     startCountdown();
@@ -1189,25 +1190,13 @@ async function fetchRT(){
   }
 }
 
-async function fetchBCB(){
-  try{
-    const [selic, ipca12m, cdi] = await Promise.all([
-      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json').then(r=>r.json()),
-      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json').then(r=>r.json()),
-      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4392/dados/ultimos/1?formato=json').then(r=>r.json())
-    ]);
-    const selicVal = selic?.[0]?.valor;
-    const ipcaVal = ipca12m?.[0]?.valor;
-    const cdiVal = cdi?.[0]?.valor;
-    if(selicVal){
-      setEl('bcb-selic-val1', parseFloat(selicVal).toFixed(2).replace('.',',')+'%');
-      setEl('bcb-selic-val2', parseFloat(selicVal).toFixed(2).replace('.',',')+'%');
-    }
-    if(ipcaVal) setEl('bcb-ipca12m-val', parseFloat(ipcaVal).toFixed(2).replace('.',',')+'%');
-    if(cdiVal) setEl('bcb-cdi-val', '~'+parseFloat(cdiVal).toFixed(2).replace('.',',')+'%');
-  }catch(err){
-    console.warn('Erro API BCB:', err);
+function updateBCB(bcb){
+  if(bcb.selic){
+    setEl('bcb-selic-val1', parseFloat(bcb.selic).toFixed(2).replace('.',',')+'%');
+    setEl('bcb-selic-val2', parseFloat(bcb.selic).toFixed(2).replace('.',',')+'%');
   }
+  if(bcb.ipca12m) setEl('bcb-ipca12m-val', parseFloat(bcb.ipca12m).toFixed(2).replace('.',',')+'%');
+  if(bcb.cdi) setEl('bcb-cdi-val', '~'+parseFloat(bcb.cdi).toFixed(2).replace('.',',')+'%');
 }
 
 function updateIndices(idx){
@@ -1460,8 +1449,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     sub.after(ts);
   }
   fetchRT();
-  fetchBCB();
-  setInterval(fetchBCB, 30*60*1000);
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
 
