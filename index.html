@@ -872,6 +872,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option>Moradia</option><option>Alimentação</option><option>Transporte</option>
         <option>Saúde</option><option>Educação</option><option>Lazer</option>
         <option>Cartão de Crédito</option>
+        <option>Empréstimo</option>
         <option>Investimento aportado</option><option>Contas fixas</option><option>Outros</option>
       </select>
       <select class="fin-select" id="pag-status">
@@ -897,6 +898,31 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
     <div id="lista-lanc"><div class="empty-state">Nenhum lançamento ainda.<br>Adicione receitas e despesas acima.</div></div>
+  </div>
+
+  <div class="fin-form" style="margin-top:1.2rem">
+    <h3>📊 Resumo anual por categoria</h3>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <button class="mes-btn" onclick="mudarAnoResumo(-1)">◀</button>
+      <div class="mes-label" id="ano-resumo-label" style="min-width:60px;text-align:center">—</div>
+      <button class="mes-btn" onclick="mudarAnoResumo(1)">▶</button>
+    </div>
+    <div class="resumo-mes" style="margin-bottom:1rem">
+      <div class="rm"><div class="rm-l">Receitas no ano</div><div class="rm-v pos" id="ano-tot-rec">R$ 0</div></div>
+      <div class="rm"><div class="rm-l">Despesas no ano</div><div class="rm-v neg" id="ano-tot-pag">R$ 0</div></div>
+      <div class="rm"><div class="rm-l">Resultado geral</div><div class="rm-v" id="ano-tot-saldo">R$ 0</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="ano-resumo-grid">
+      <div style="position:relative;height:220px">
+        <canvas id="grafico-categorias"></canvas>
+      </div>
+      <div>
+        <table class="tbl" id="tabela-categorias">
+          <thead><tr><th>Categoria</th><th>Total</th><th>%</th></tr></thead>
+          <tbody id="tabela-categorias-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1111,6 +1137,63 @@ function renderGraficoEvolucao(){
   });
 }
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+let anoResumo=new Date().getFullYear();
+let graficoCategorias=null;
+const CORES_CAT=['#534AB7','#27ae60','#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6','#16a085'];
+function mudarAnoResumo(d){anoResumo+=d;renderResumoAnual();}
+function renderResumoAnual(){
+  const labelEl=document.getElementById('ano-resumo-label');
+  if(labelEl) labelEl.textContent=anoResumo;
+  const lancsAno=lancamentos.filter(l=>new Date(l.data+'T12:00:00').getFullYear()===anoResumo);
+  const totRec=lancsAno.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const totPag=lancsAno.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+  const saldo=totRec-totPag;
+  const setText=(id,val,cls)=>{const el=document.getElementById(id);if(el){el.textContent=fmtBRLFin(val);if(cls)el.className='rm-v '+cls;}};
+  setText('ano-tot-rec',totRec,'pos');
+  setText('ano-tot-pag',totPag,'neg');
+  setText('ano-tot-saldo',saldo,saldo>=0?'pos':'neg');
+
+  const porCategoria={};
+  lancsAno.filter(l=>l.tipo==='pag').forEach(l=>{
+    const cat=l.cat||'Sem categoria';
+    porCategoria[cat]=(porCategoria[cat]||0)+l.val;
+  });
+  const categorias=Object.keys(porCategoria).sort((a,b)=>porCategoria[b]-porCategoria[a]);
+  const valores=categorias.map(c=>porCategoria[c]);
+  const totalCat=valores.reduce((s,v)=>s+v,0);
+
+  const tbody=document.getElementById('tabela-categorias-body');
+  if(tbody){
+    if(!categorias.length){
+      tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#aaa;padding:1rem">Nenhuma despesa neste ano.</td></tr>';
+    } else {
+      tbody.innerHTML=categorias.map((c,i)=>{
+        const pct=totalCat>0?(porCategoria[c]/totalCat*100):0;
+        return '<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+CORES_CAT[i%CORES_CAT.length]+';margin-right:6px"></span>'+c+'</td><td>'+fmtBRLFin(porCategoria[c])+'</td><td>'+pct.toFixed(1)+'%</td></tr>';
+      }).join('');
+    }
+  }
+
+  const canvas=document.getElementById('grafico-categorias');
+  if(canvas && typeof Chart!=='undefined'){
+    if(graficoCategorias){
+      graficoCategorias.data.labels=categorias;
+      graficoCategorias.data.datasets[0].data=valores;
+      graficoCategorias.update();
+    } else {
+      graficoCategorias=new Chart(canvas.getContext('2d'),{
+        type:'pie',
+        data:{labels:categorias,datasets:[{data:valores,backgroundColor:CORES_CAT}]},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}}
+        }
+      });
+    }
+  }
+}
 let editandoId=null, editandoTipo=null;
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
   if(editandoId!==null && editandoTipo===tipo){
@@ -1183,7 +1266,7 @@ function cancelarEdicao(tipo){
 function deletarLanc(id){if(!confirm('Remover? (isso não afeta outros meses, mesmo se for recorrente)'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
-function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();}
+function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();}
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="editarLanc('+l.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
