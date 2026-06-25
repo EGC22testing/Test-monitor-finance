@@ -119,6 +119,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 .resumo-mes{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.2rem}
 .rm{background:#fff;border-radius:10px;padding:11px 13px;border:1px solid #eee;text-align:center}
 .rm-l{font-size:10px;color:#888;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.rm-s{font-size:10px;margin-top:3px;font-weight:600}
 .rm-v{font-size:16px;font-weight:700}
 .mes-nav{display:flex;align-items:center;gap:10px;margin-bottom:.9rem}
 .mes-btn{background:#fff;border:1px solid #ddd;border-radius:7px;padding:4px 11px;cursor:pointer;font-size:12px}
@@ -944,6 +945,28 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
   </div>
+
+  <div class="fin-form" style="margin-top:1.2rem">
+    <h3>🔄 Comparativo mensal</h3>
+    <div class="lanc-filters" style="margin-bottom:12px">
+      <div class="lanc-filter on" id="cmp-mes-anterior" onclick="setCompMes('anterior')">vs. mês anterior</div>
+      <div class="lanc-filter" id="cmp-mes-anopassado" onclick="setCompMes('anopassado')">vs. mesmo mês ano passado</div>
+    </div>
+    <div class="resumo-mes" style="margin-bottom:1rem" id="cmp-mes-totais"></div>
+    <table class="tbl" id="tabela-cmp-mes">
+      <thead><tr><th>Categoria</th><th id="cmp-mes-th-atual">Atual</th><th id="cmp-mes-th-comp">Comparado</th><th>Variação</th></tr></thead>
+      <tbody id="tabela-cmp-mes-body"></tbody>
+    </table>
+  </div>
+
+  <div class="fin-form" style="margin-top:1.2rem">
+    <h3>📅 Comparativo anual — <span id="cmp-ano-label">—</span> vs <span id="cmp-ano-label-ant">—</span></h3>
+    <div class="resumo-mes" style="margin-bottom:1rem" id="cmp-ano-totais"></div>
+    <table class="tbl" id="tabela-cmp-ano">
+      <thead><tr><th>Categoria</th><th id="cmp-ano-th-atual">Atual</th><th id="cmp-ano-th-comp">Anterior</th><th>Variação</th></tr></thead>
+      <tbody id="tabela-cmp-ano-body"></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
@@ -1166,6 +1189,7 @@ let anoResumo=new Date().getFullYear();
 let graficoCategorias=null;
 let graficoEvolucaoReceita=null;
 let graficoFontesReceita=null;
+let modoCompMes='anterior'; // 'anterior' ou 'anopassado'
 const CORES_CAT=['#534AB7','#27ae60','#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6','#16a085'];
 function mudarAnoResumo(d){anoResumo+=d;renderResumoAnual();}
 function renderResumoAnual(){
@@ -1288,7 +1312,127 @@ function renderResumoAnual(){
       });
     }
   }
+
+  renderComparativoMes();
+  renderComparativoAno();
 }
+
+function setCompMes(modo){
+  modoCompMes=modo;
+  document.getElementById('cmp-mes-anterior').classList.toggle('on',modo==='anterior');
+  document.getElementById('cmp-mes-anopassado').classList.toggle('on',modo==='anopassado');
+  renderComparativoMes();
+}
+
+function totaisPorCategoria(lancs,tipo){
+  const r={};
+  lancs.filter(l=>l.tipo===tipo).forEach(l=>{
+    const c=l.cat||'Sem categoria';
+    r[c]=(r[c]||0)+l.val;
+  });
+  return r;
+}
+
+function linhaVariacao(label,atual,comp){
+  const variacao = comp>0 ? ((atual-comp)/comp*100) : (atual>0?100:0);
+  const cls = variacao>0?'neg':(variacao<0?'pos':'neu'); // mais gasto = ruim(neg), menos gasto = bom(pos)
+  const sinal = variacao>0?'+':'';
+  return '<tr><td>'+label+'</td><td>'+fmtBRLFin(atual)+'</td><td>'+fmtBRLFin(comp)+'</td><td class="'+cls+'">'+sinal+variacao.toFixed(1)+'%</td></tr>';
+}
+
+function renderComparativoMes(){
+  const thAtual=document.getElementById('cmp-mes-th-atual');
+  const thComp=document.getElementById('cmp-mes-th-comp');
+  let compMes=mesAtual, compAno=anoAtual;
+  if(modoCompMes==='anterior'){
+    compMes=mesAtual-1; compAno=anoAtual;
+    if(compMes<0){compMes=11;compAno--;}
+    if(thAtual) thAtual.textContent=MESES[mesAtual].slice(0,3)+'/'+String(anoAtual).slice(2);
+    if(thComp) thComp.textContent=MESES[compMes].slice(0,3)+'/'+String(compAno).slice(2);
+  } else {
+    compAno=anoAtual-1;
+    if(thAtual) thAtual.textContent=MESES[mesAtual]+'/'+anoAtual;
+    if(thComp) thComp.textContent=MESES[mesAtual]+'/'+compAno;
+  }
+  const lancsAtual=lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});
+  const lancsComp=lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===compMes&&d.getFullYear()===compAno;});
+
+  const recAtual=lancsAtual.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const pagAtual=lancsAtual.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+  const recComp=lancsComp.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const pagComp=lancsComp.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+
+  const fmtVar=(atual,comp,quantoMaiorMelhor)=>{
+    if(comp===0) return atual===0?'—':'novo';
+    const v=((atual-comp)/comp*100);
+    const bom = quantoMaiorMelhor ? v>=0 : v<=0;
+    return '<span class="'+(bom?'pos':'neg')+'">'+(v>=0?'+':'')+v.toFixed(1)+'%</span>';
+  };
+
+  const totaisEl=document.getElementById('cmp-mes-totais');
+  if(totaisEl){
+    totaisEl.innerHTML=
+      '<div class="rm"><div class="rm-l">Receita</div><div class="rm-v pos">'+fmtBRLFin(recAtual)+'</div><div class="rm-s">'+fmtVar(recAtual,recComp,true)+'</div></div>'+
+      '<div class="rm"><div class="rm-l">Despesa</div><div class="rm-v neg">'+fmtBRLFin(pagAtual)+'</div><div class="rm-s">'+fmtVar(pagAtual,pagComp,false)+'</div></div>'+
+      '<div class="rm"><div class="rm-l">Saldo</div><div class="rm-v '+(recAtual-pagAtual>=0?'pos':'neg')+'">'+fmtBRLFin(recAtual-pagAtual)+'</div><div class="rm-s">'+fmtVar(recAtual-pagAtual,recComp-pagComp,true)+'</div></div>';
+  }
+
+  const catAtual=totaisPorCategoria(lancsAtual,'pag');
+  const catComp=totaisPorCategoria(lancsComp,'pag');
+  const todasCats=[...new Set([...Object.keys(catAtual),...Object.keys(catComp)])].sort((a,b)=>(catAtual[b]||0)-(catAtual[a]||0));
+  const tbody=document.getElementById('tabela-cmp-mes-body');
+  if(tbody){
+    if(!todasCats.length){
+      tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:1rem">Sem despesas para comparar.</td></tr>';
+    } else {
+      tbody.innerHTML=todasCats.map(c=>linhaVariacao(c,catAtual[c]||0,catComp[c]||0)).join('');
+    }
+  }
+}
+
+function renderComparativoAno(){
+  const anoAtualCmp=anoResumo, anoAnteriorCmp=anoResumo-1;
+  document.getElementById('cmp-ano-label').textContent=anoAtualCmp;
+  document.getElementById('cmp-ano-label-ant').textContent=anoAnteriorCmp;
+  document.getElementById('cmp-ano-th-atual').textContent=anoAtualCmp;
+  document.getElementById('cmp-ano-th-comp').textContent=anoAnteriorCmp;
+
+  const lancsAtual=lancamentos.filter(l=>new Date(l.data+'T12:00:00').getFullYear()===anoAtualCmp);
+  const lancsComp=lancamentos.filter(l=>new Date(l.data+'T12:00:00').getFullYear()===anoAnteriorCmp);
+
+  const recAtual=lancsAtual.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const pagAtual=lancsAtual.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+  const recComp=lancsComp.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const pagComp=lancsComp.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+
+  const fmtVar=(atual,comp,quantoMaiorMelhor)=>{
+    if(comp===0) return atual===0?'—':'novo';
+    const v=((atual-comp)/comp*100);
+    const bom = quantoMaiorMelhor ? v>=0 : v<=0;
+    return '<span class="'+(bom?'pos':'neg')+'">'+(v>=0?'+':'')+v.toFixed(1)+'%</span>';
+  };
+
+  const totaisEl=document.getElementById('cmp-ano-totais');
+  if(totaisEl){
+    totaisEl.innerHTML=
+      '<div class="rm"><div class="rm-l">Receita</div><div class="rm-v pos">'+fmtBRLFin(recAtual)+'</div><div class="rm-s">'+fmtVar(recAtual,recComp,true)+'</div></div>'+
+      '<div class="rm"><div class="rm-l">Despesa</div><div class="rm-v neg">'+fmtBRLFin(pagAtual)+'</div><div class="rm-s">'+fmtVar(pagAtual,pagComp,false)+'</div></div>'+
+      '<div class="rm"><div class="rm-l">Saldo</div><div class="rm-v '+(recAtual-pagAtual>=0?'pos':'neg')+'">'+fmtBRLFin(recAtual-pagAtual)+'</div><div class="rm-s">'+fmtVar(recAtual-pagAtual,recComp-pagComp,true)+'</div></div>';
+  }
+
+  const catAtual=totaisPorCategoria(lancsAtual,'pag');
+  const catComp=totaisPorCategoria(lancsComp,'pag');
+  const todasCats=[...new Set([...Object.keys(catAtual),...Object.keys(catComp)])].sort((a,b)=>(catAtual[b]||0)-(catAtual[a]||0));
+  const tbody=document.getElementById('tabela-cmp-ano-body');
+  if(tbody){
+    if(!todasCats.length){
+      tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#aaa;padding:1rem">Sem despesas para comparar.</td></tr>';
+    } else {
+      tbody.innerHTML=todasCats.map(c=>linhaVariacao(c,catAtual[c]||0,catComp[c]||0)).join('');
+    }
+  }
+}
+
 let editandoId=null, editandoTipo=null;
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
   if(editandoId!==null && editandoTipo===tipo){
