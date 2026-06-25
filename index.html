@@ -924,6 +924,13 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
   </div>
+
+  <div class="fin-form" style="margin-top:1.2rem">
+    <h3>📈 Evolução da receita — <span id="ano-receita-label">—</span></h3>
+    <div style="position:relative;height:200px">
+      <canvas id="grafico-evolucao-receita"></canvas>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -959,6 +966,7 @@ function salvarModelos(){
   if(window.fbSalvarModelos) window.fbSalvarModelos(modelosRecorrentes);
 }
 let modelosCarregados = false;
+let recorrentesExcluidos = []; // lista de "modeloId|YYYY-MM" que o usuário excluiu de propósito
 function iniciarSyncFinancas(){
   if(window.fbOuvirLancamentos && window.fbOuvirModelos){
     window.fbOuvirLancamentos((dados)=>{
@@ -987,7 +995,10 @@ function iniciarSyncFinancas(){
 function gerarLancamentosRecorrentesDoMes(){
   if(!modelosCarregados || !modelosRecorrentes.length) return;
   let criouAlgum = false;
+  const chaveMesAtual = anoAtual+'-'+String(mesAtual+1).padStart(2,'0');
   modelosRecorrentes.forEach(modelo=>{
+    const foiExcluido = recorrentesExcluidos.includes(modelo.id+'|'+chaveMesAtual);
+    if(foiExcluido) return;
     const jaExiste = lancamentos.some(l=>{
       if(l.recId !== modelo.id) return false;
       const d = new Date(l.data+'T12:00:00');
@@ -1140,6 +1151,7 @@ function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimum
 
 let anoResumo=new Date().getFullYear();
 let graficoCategorias=null;
+let graficoEvolucaoReceita=null;
 const CORES_CAT=['#534AB7','#27ae60','#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6','#16a085'];
 function mudarAnoResumo(d){anoResumo+=d;renderResumoAnual();}
 function renderResumoAnual(){
@@ -1189,6 +1201,38 @@ function renderResumoAnual(){
           responsive:true,
           maintainAspectRatio:false,
           plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}}
+        }
+      });
+    }
+  }
+
+  const labelReceitaEl=document.getElementById('ano-receita-label');
+  if(labelReceitaEl) labelReceitaEl.textContent=anoResumo;
+  const labelsRec=[],receitasMes=[];
+  for(let m=0;m<12;m++){
+    const recMes=lancsAno.filter(l=>l.tipo==='rec'&&new Date(l.data+'T12:00:00').getMonth()===m).reduce((s,l)=>s+l.val,0);
+    labelsRec.push(MESES[m].slice(0,3));
+    receitasMes.push(recMes);
+  }
+  const canvasRec=document.getElementById('grafico-evolucao-receita');
+  if(canvasRec && typeof Chart!=='undefined'){
+    if(graficoEvolucaoReceita){
+      graficoEvolucaoReceita.data.labels=labelsRec;
+      graficoEvolucaoReceita.data.datasets[0].data=receitasMes;
+      graficoEvolucaoReceita.update();
+    } else {
+      graficoEvolucaoReceita=new Chart(canvasRec.getContext('2d'),{
+        type:'line',
+        data:{labels:labelsRec,datasets:[{
+          label:'Receita',data:receitasMes,
+          borderColor:'#27ae60',backgroundColor:'rgba(39,174,96,0.12)',
+          tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#27ae60'
+        }]},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:v=>fmtBRLFin(v)}}}
         }
       });
     }
@@ -1263,7 +1307,30 @@ function cancelarEdicao(tipo){
   const cancelBtn=document.getElementById('btn-cancel-'+tipo);
   if(cancelBtn) cancelBtn.remove();
 }
-function deletarLanc(id){if(!confirm('Remover? (isso não afeta outros meses, mesmo se for recorrente)'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
+function deletarLanc(id){
+  const l=lancamentos.find(x=>x.id===id);
+  if(!l)return;
+  if(l.recId){
+    const apenasEsteMes=confirm('Este lançamento é recorrente (🔁).\n\nOK = excluir apenas este mês (continua nos próximos meses)\nCancelar = ver opção de parar a recorrência por completo');
+    if(apenasEsteMes){
+      const d=new Date(l.data+'T12:00:00');
+      const chave=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      recorrentesExcluidos.push(l.recId+'|'+chave);
+      lancamentos=lancamentos.filter(x=>x.id!==id);
+    } else {
+      const pararTudo=confirm('Deseja parar esta recorrência definitivamente?\n\nIsso vai excluir este e todos os lançamentos futuros (a partir deste mês) gerados por ela.');
+      if(!pararTudo) return;
+      lancamentos=lancamentos.filter(x=>!(x.recId===l.recId && new Date(x.data+'T12:00:00')>=new Date(l.data+'T12:00:00')));
+      modelosRecorrentes=modelosRecorrentes.filter(m=>m.id!==l.recId);
+      salvarModelos();
+    }
+  } else {
+    if(!confirm('Remover este lançamento?'))return;
+    lancamentos=lancamentos.filter(x=>x.id!==id);
+  }
+  salvar();
+  renderFinancas();
+}
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
 function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();}
