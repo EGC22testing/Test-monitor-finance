@@ -858,7 +858,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <input type="checkbox" id="rec-recorrente" style="width:auto;margin:0">
         🔁 Repetir todo mês
       </label>
-      <button class="btn-add rec" onclick="addLanc('rec')">+ Adicionar receita</button>
+      <button class="btn-add rec" id="btn-add-rec" onclick="addLanc('rec')">+ Adicionar receita</button>
     </div>
     <div class="fin-form">
       <h3>❤️ Lançar despesa</h3>
@@ -871,6 +871,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option value="">Categoria</option>
         <option>Moradia</option><option>Alimentação</option><option>Transporte</option>
         <option>Saúde</option><option>Educação</option><option>Lazer</option>
+        <option>Cartão de Crédito</option>
         <option>Investimento aportado</option><option>Contas fixas</option><option>Outros</option>
       </select>
       <select class="fin-select" id="pag-status">
@@ -882,7 +883,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <input type="checkbox" id="pag-recorrente" style="width:auto;margin:0">
         🔁 Repetir todo mês
       </label>
-      <button class="btn-add" onclick="addLanc('pag')">+ Adicionar despesa</button>
+      <button class="btn-add" id="btn-add-pag" onclick="addLanc('pag')">+ Adicionar despesa</button>
     </div>
   </div>
   <div class="lancamentos">
@@ -1110,7 +1111,26 @@ function renderGraficoEvolucao(){
   });
 }
 function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+let editandoId=null, editandoTipo=null;
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
+  if(editandoId!==null && editandoTipo===tipo){
+    const idx=lancamentos.findIndex(l=>l.id===editandoId);
+    if(idx>-1){
+      const recIdAtual=lancamentos[idx].recId;
+      lancamentos[idx]={...lancamentos[idx],desc,val,data,cat,status};
+      if(!recIdAtual && recorrente){
+        const diaDoMes=new Date(data+'T12:00:00').getDate();
+        const recId='rec_'+Date.now();
+        lancamentos[idx].recId=recId;
+        modelosRecorrentes.push({id:recId,tipo,desc,val,cat,status,dia:diaDoMes,criadoEm:data});
+        salvarModelos();
+      }
+    }
+    salvar();
+    cancelarEdicao(tipo);
+    const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();
+    return;
+  }
   const diaDoMes = new Date(data+'T12:00:00').getDate();
   const recId = recorrente ? 'rec_'+Date.now() : null;
   lancamentos.push({id:Date.now(),tipo,desc,val,data,cat,status,recId});
@@ -1122,11 +1142,49 @@ function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.tr
   ['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});
   document.getElementById(tipo+'-recorrente').checked=false;
   const d=new Date(data+'T12:00:00');mesAtual=d.getMonth();anoAtual=d.getFullYear();renderFinancas();}
+function editarLanc(id){
+  const l=lancamentos.find(x=>x.id===id);
+  if(!l)return;
+  editandoId=id;
+  editandoTipo=l.tipo;
+  document.getElementById(l.tipo+'-desc').value=l.desc;
+  document.getElementById(l.tipo+'-val').value=l.val;
+  document.getElementById(l.tipo+'-data').value=l.data;
+  document.getElementById(l.tipo+'-cat').value=l.cat||'';
+  document.getElementById(l.tipo+'-status').value=l.status;
+  document.getElementById(l.tipo+'-recorrente').checked=false;
+  document.getElementById(l.tipo+'-recorrente').disabled=!!l.recId;
+  const btn=document.getElementById('btn-add-'+l.tipo);
+  if(btn){
+    btn.textContent='💾 Salvar alteração';
+    if(!document.getElementById('btn-cancel-'+l.tipo)){
+      const cancelBtn=document.createElement('button');
+      cancelBtn.id='btn-cancel-'+l.tipo;
+      cancelBtn.textContent='Cancelar edição';
+      cancelBtn.style='width:100%;padding:6px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#666;font-size:11px;cursor:pointer;margin-top:5px';
+      cancelBtn.onclick=()=>cancelarEdicao(l.tipo);
+      btn.insertAdjacentElement('afterend',cancelBtn);
+    }
+  }
+  document.getElementById(l.tipo+'-desc').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelarEdicao(tipo){
+  editandoId=null;
+  editandoTipo=null;
+  ['desc','val','data'].forEach(f=>{document.getElementById(tipo+'-'+f).value='';});
+  document.getElementById(tipo+'-cat').value='';
+  document.getElementById(tipo+'-recorrente').checked=false;
+  document.getElementById(tipo+'-recorrente').disabled=false;
+  const btn=document.getElementById('btn-add-'+tipo);
+  if(btn) btn.textContent=tipo==='rec'?'+ Adicionar receita':'+ Adicionar despesa';
+  const cancelBtn=document.getElementById('btn-cancel-'+tipo);
+  if(cancelBtn) cancelBtn.remove();
+}
 function deletarLanc(id){if(!confirm('Remover? (isso não afeta outros meses, mesmo se for recorrente)'))return;lancamentos=lancamentos.filter(l=>l.id!==id);salvar();renderFinancas();}
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
 function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();}
-function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
+function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="editarLanc('+l.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
 // ── COTAÇÕES EM TEMPO REAL ──────────────────────────────
