@@ -873,6 +873,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option>Saúde</option><option>Educação</option><option>Lazer</option>
         <option>Cartão de Crédito</option>
         <option>Empréstimo</option>
+        <option>Telefone</option>
+        <option>Despesas da Empresa</option>
         <option>Investimento aportado</option><option>Contas fixas</option><option>Outros</option>
       </select>
       <select class="fin-select" id="pag-status">
@@ -901,7 +903,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div class="fin-form" style="margin-top:1.2rem">
-    <h3>📊 Resumo anual por categoria</h3>
+    <h3>📊 Resumo anual — Despesas por categoria</h3>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <button class="mes-btn" onclick="mudarAnoResumo(-1)">◀</button>
       <div class="mes-label" id="ano-resumo-label" style="min-width:60px;text-align:center">—</div>
@@ -926,9 +928,20 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div class="fin-form" style="margin-top:1.2rem">
-    <h3>📈 Evolução da receita — <span id="ano-receita-label">—</span></h3>
-    <div style="position:relative;height:200px">
+    <h3>📊 Resumo anual — Receitas por fonte</h3>
+    <div style="position:relative;height:200px;margin-bottom:14px">
       <canvas id="grafico-evolucao-receita"></canvas>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="ano-receita-grid">
+      <div style="position:relative;height:220px">
+        <canvas id="grafico-fontes-receita"></canvas>
+      </div>
+      <div>
+        <table class="tbl" id="tabela-fontes-receita">
+          <thead><tr><th>Fonte</th><th>Total</th><th>%</th></tr></thead>
+          <tbody id="tabela-fontes-receita-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -1152,6 +1165,7 @@ function fmtBRLFin(v){return 'R$ '+parseFloat(v).toLocaleString('pt-BR',{minimum
 let anoResumo=new Date().getFullYear();
 let graficoCategorias=null;
 let graficoEvolucaoReceita=null;
+let graficoFontesReceita=null;
 const CORES_CAT=['#534AB7','#27ae60','#e74c3c','#f39c12','#3498db','#9b59b6','#1abc9c','#e67e22','#34495e','#95a5a6','#16a085'];
 function mudarAnoResumo(d){anoResumo+=d;renderResumoAnual();}
 function renderResumoAnual(){
@@ -1206,8 +1220,6 @@ function renderResumoAnual(){
     }
   }
 
-  const labelReceitaEl=document.getElementById('ano-receita-label');
-  if(labelReceitaEl) labelReceitaEl.textContent=anoResumo;
   const labelsRec=[],receitasMes=[];
   for(let m=0;m<12;m++){
     const recMes=lancsAno.filter(l=>l.tipo==='rec'&&new Date(l.data+'T12:00:00').getMonth()===m).reduce((s,l)=>s+l.val,0);
@@ -1222,17 +1234,56 @@ function renderResumoAnual(){
       graficoEvolucaoReceita.update();
     } else {
       graficoEvolucaoReceita=new Chart(canvasRec.getContext('2d'),{
-        type:'line',
+        type:'bar',
         data:{labels:labelsRec,datasets:[{
           label:'Receita',data:receitasMes,
-          borderColor:'#27ae60',backgroundColor:'rgba(39,174,96,0.12)',
-          tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#27ae60'
+          backgroundColor:'#27ae60',borderRadius:4
         }]},
         options:{
           responsive:true,
           maintainAspectRatio:false,
           plugins:{legend:{display:false}},
           scales:{y:{ticks:{callback:v=>fmtBRLFin(v)}}}
+        }
+      });
+    }
+  }
+
+  const porFonte={};
+  lancsAno.filter(l=>l.tipo==='rec').forEach(l=>{
+    const fonte=l.cat||'Sem categoria';
+    porFonte[fonte]=(porFonte[fonte]||0)+l.val;
+  });
+  const fontes=Object.keys(porFonte).sort((a,b)=>porFonte[b]-porFonte[a]);
+  const valoresFontes=fontes.map(f=>porFonte[f]);
+  const totalFontes=valoresFontes.reduce((s,v)=>s+v,0);
+
+  const tbodyFontes=document.getElementById('tabela-fontes-receita-body');
+  if(tbodyFontes){
+    if(!fontes.length){
+      tbodyFontes.innerHTML='<tr><td colspan="3" style="text-align:center;color:#aaa;padding:1rem">Nenhuma receita neste ano.</td></tr>';
+    } else {
+      tbodyFontes.innerHTML=fontes.map((f,i)=>{
+        const pct=totalFontes>0?(porFonte[f]/totalFontes*100):0;
+        return '<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:'+CORES_CAT[i%CORES_CAT.length]+';margin-right:6px"></span>'+f+'</td><td>'+fmtBRLFin(porFonte[f])+'</td><td>'+pct.toFixed(1)+'%</td></tr>';
+      }).join('');
+    }
+  }
+
+  const canvasFontes=document.getElementById('grafico-fontes-receita');
+  if(canvasFontes && typeof Chart!=='undefined'){
+    if(graficoFontesReceita){
+      graficoFontesReceita.data.labels=fontes;
+      graficoFontesReceita.data.datasets[0].data=valoresFontes;
+      graficoFontesReceita.update();
+    } else {
+      graficoFontesReceita=new Chart(canvasFontes.getContext('2d'),{
+        type:'pie',
+        data:{labels:fontes,datasets:[{data:valoresFontes,backgroundColor:CORES_CAT}]},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}}
         }
       });
     }
