@@ -222,15 +222,30 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 </head>
 <body>
 
+<div id="app-login-box" style="max-width:360px;margin:80px auto;text-align:center;display:none">
+  <div style="font-size:40px;margin-bottom:10px">📊</div>
+  <div style="font-size:18px;font-weight:600;margin-bottom:4px">Monitor Financeiro</div>
+  <div style="font-size:12px;color:#888;margin-bottom:20px">Faça login para acessar seu painel</div>
+  <input type="email" id="app-login-email" placeholder="Email" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+  <input type="password" id="app-login-senha" placeholder="Senha" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+  <button onclick="fazerLoginApp()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Entrar</button>
+  <div id="app-login-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
+</div>
+
+<div id="app-content" style="display:none">
+
 <div class="header-row">
   <div>
     <h1>📊 Monitor Financeiro <span class="badge-live">AO VIVO</span><span class="badge-date">23/06/2026</span></h1>
     <div class="sub">Cotações ao vivo via Finnhub + Brapi · 23/06/2026 · Atualiza a cada 60s</div>
   </div>
-  <button class="btn-hide" onclick="toggleValues()" id="btn-hide-vals">
-    <span id="eye-txt">👁</span>
-    <span id="hide-label">Ocultar valores</span>
-  </button>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="btn-hide" onclick="toggleValues()" id="btn-hide-vals">
+      <span id="eye-txt">👁</span>
+      <span id="hide-label">Ocultar valores</span>
+    </button>
+    <button class="btn-hide" onclick="fazerLogoutApp()" title="Sair">🚪</button>
+  </div>
 </div>
 
 <div class="tabs">
@@ -804,21 +819,11 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
 <!-- ═══════════════ FINANÇAS PESSOAIS ═══════════════ -->
 <div id="p-financas" class="panel">
-  <div id="fin-login-box" style="max-width:340px;margin:40px auto;text-align:center;display:none">
-    <div style="font-size:32px;margin-bottom:8px">🔒</div>
-    <div style="font-weight:600;margin-bottom:16px">Faça login para acessar suas finanças</div>
-    <input type="email" id="fin-login-email" placeholder="Email" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
-    <input type="password" id="fin-login-senha" placeholder="Senha" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
-    <button onclick="fazerLoginFinancas()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Entrar</button>
-    <div id="fin-login-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
-  </div>
-  <div id="fin-content" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
     <div style="font-size:11px;color:#888" id="backup-status">📦 Último backup: nunca</div>
     <div style="display:flex;align-items:center;gap:8px">
       <button onclick="fazerBackupManual()" style="font-size:11px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:4px 12px;cursor:pointer">📦 Fazer backup agora</button>
       <span id="fin-sync-status">⏳ Conectando...</span>
-      <button onclick="fazerLogoutFinancas()" style="font-size:11px;background:none;border:1px solid #ddd;border-radius:14px;padding:2px 10px;cursor:pointer">Sair</button>
     </div>
   </div>
   <div class="mes-nav">
@@ -969,6 +974,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 </div>
 
+</div>
+
 <script>
 function st(id,el){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.getElementById('p-'+id).classList.add('on');el.classList.add('on');}
 function tg(id){const d=document.getElementById(id);const c=document.getElementById('c-'+id);const o=d.classList.contains('op');d.classList.toggle('op',!o);if(c)c.style.transform=o?'':'rotate(180deg)';}
@@ -1065,12 +1072,16 @@ function setSyncStatus(msg, color){
 }
 
 window.onFbAuthChange = function(user){
-  const loginBox = document.getElementById('fin-login-box');
-  const content  = document.getElementById('fin-content');
+  const loginBox = document.getElementById('app-login-box');
+  const content  = document.getElementById('app-content');
   if(user){
     if(loginBox) loginBox.style.display='none';
     if(content)  content.style.display='block';
     iniciarSyncFinancas();
+    if(typeof fetchRT==='function' && !window._rtIniciado){
+      window._rtIniciado=true;
+      fetchRT();
+    }
   } else {
     if(loginBox) loginBox.style.display='block';
     if(content)  content.style.display='none';
@@ -1082,10 +1093,10 @@ if(window._fbAuthReady){
   window.onFbAuthChange(window._fbLastAuthUser);
 }
 
-window.fazerLoginFinancas = function(){
-  const email = document.getElementById('fin-login-email').value.trim();
-  const senha = document.getElementById('fin-login-senha').value;
-  const erroEl = document.getElementById('fin-login-erro');
+window.fazerLoginApp = function(){
+  const email = document.getElementById('app-login-email').value.trim();
+  const senha = document.getElementById('app-login-senha').value;
+  const erroEl = document.getElementById('app-login-erro');
   erroEl.textContent = '';
   if(!email || !senha){ erroEl.textContent='Preencha email e senha.'; return; }
   if(window.fbLogin){
@@ -1095,7 +1106,7 @@ window.fazerLoginFinancas = function(){
   }
 };
 
-window.fazerLogoutFinancas = function(){
+window.fazerLogoutApp = function(){
   if(window.fbLogout) window.fbLogout();
 };
 
@@ -1844,7 +1855,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     ts.textContent='⏳ Conectando ao Worker...';
     sub.after(ts);
   }
-  fetchRT();
+  // fetchRT() agora é chamado em onFbAuthChange, após o login confirmado
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
 
