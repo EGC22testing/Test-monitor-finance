@@ -920,16 +920,19 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="fin-form" style="margin-bottom:1.2rem">
     <h3 id="op-form-titulo">📝 Lançar operação</h3>
     <div class="fin-row">
-      <select class="fin-select" id="op-mercado">
+      <select class="fin-select" id="op-mercado" onchange="atualizarListaAtivosOp()">
         <option value="EUA">🇺🇸 EUA</option>
         <option value="BR">🇧🇷 Brasil</option>
       </select>
-      <select class="fin-select" id="op-tipo">
+      <select class="fin-select" id="op-tipo" onchange="atualizarInfoPosicaoOp()">
         <option value="compra">Compra</option>
         <option value="venda">Venda</option>
       </select>
     </div>
-    <input class="fin-input" id="op-ativo" placeholder="Ticker (ex: NVDA, WEGE3)" style="text-transform:uppercase">
+    <select class="fin-select" id="op-ativo" onchange="atualizarInfoPosicaoOp()">
+      <option value="">Selecione o ativo...</option>
+    </select>
+    <div id="op-info-posicao" style="display:none;font-size:11px;background:#f5f5f0;border-radius:7px;padding:8px 10px;margin-bottom:7px"></div>
     <div class="fin-row">
       <input class="fin-input" id="op-qtd" placeholder="Quantidade" type="number" min="0" step="0.00001">
       <input class="fin-input" id="op-preco" placeholder="Preço unitário" type="number" min="0" step="0.01">
@@ -942,7 +945,9 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <h3>✏️ Ajuste manual de preço médio</h3>
     <div style="font-size:11px;color:#888;margin-bottom:10px">Use isso se quiser sobrescrever o PM calculado automaticamente pelo histórico de operações de um ativo (ex: você já tinha a posição antes de começar a registrar aqui).</div>
     <div class="fin-row">
-      <input class="fin-input" id="pm-ativo" placeholder="Ticker (ex: NVDA)" style="text-transform:uppercase">
+      <select class="fin-select" id="pm-ativo">
+        <option value="">Selecione o ativo...</option>
+      </select>
       <input class="fin-input" id="pm-valor" placeholder="PM manual (R$ ou US$)" type="number" min="0" step="0.01">
     </div>
     <button class="btn-add" style="background:#888" onclick="definirPmManual()">Salvar PM manual</button>
@@ -1715,14 +1720,22 @@ function calcularPosicoesCarteira(){
 function addOperacao(){
   const mercado=document.getElementById('op-mercado').value;
   const tipo=document.getElementById('op-tipo').value;
-  const ativo=document.getElementById('op-ativo').value.trim().toUpperCase();
+  const ativo=document.getElementById('op-ativo').value;
   const qtd=parseFloat(document.getElementById('op-qtd').value);
   const preco=parseFloat(document.getElementById('op-preco').value);
   const data=document.getElementById('op-data').value;
-  if(!ativo){ alert('Informe o ticker do ativo.'); return; }
+  if(!ativo){ alert('Selecione o ativo.'); return; }
   if(!qtd||qtd<=0){ alert('Informe uma quantidade válida.'); return; }
   if(!preco||preco<=0){ alert('Informe um preço válido.'); return; }
   if(!data){ alert('Informe a data.'); return; }
+
+  if(tipo==='venda'){
+    const pos=posicaoAtualDoAtivo(ativo,mercado);
+    if(qtd>pos.qtd+0.0000001){
+      alert('Você tem apenas '+pos.qtd+' ações de '+ativo+'. Não é possível vender '+qtd+'.');
+      return;
+    }
+  }
 
   if(editandoOpId!==null){
     const idx=operacoes.findIndex(o=>o.id===editandoOpId);
@@ -1736,7 +1749,8 @@ function addOperacao(){
     salvarAtivosCadastrados();
   }
   salvarOperacoes();
-  ['op-ativo','op-qtd','op-preco','op-data'].forEach(id=>{document.getElementById(id).value='';});
+  ['op-qtd','op-preco'].forEach(id=>{document.getElementById(id).value='';});
+  atualizarInfoPosicaoOp();
   renderOperacoes();
 }
 
@@ -1746,10 +1760,12 @@ function editarOperacao(id){
   editandoOpId=id;
   document.getElementById('op-mercado').value=op.mercado;
   document.getElementById('op-tipo').value=op.tipo;
+  atualizarListaAtivosOp();
   document.getElementById('op-ativo').value=op.ativo;
   document.getElementById('op-qtd').value=op.qtd;
   document.getElementById('op-preco').value=op.preco;
   document.getElementById('op-data').value=op.data;
+  atualizarInfoPosicaoOp();
   const titulo=document.getElementById('op-form-titulo');
   if(titulo) titulo.textContent='✏️ Editando operação';
   const btn=document.getElementById('btn-add-op');
@@ -1768,7 +1784,8 @@ function editarOperacao(id){
 }
 function cancelarEdicaoOp(){
   editandoOpId=null;
-  ['op-ativo','op-qtd','op-preco','op-data'].forEach(id=>{document.getElementById(id).value='';});
+  ['op-ativo','op-qtd','op-preco'].forEach(id=>{document.getElementById(id).value='';});
+  atualizarInfoPosicaoOp();
   const titulo=document.getElementById('op-form-titulo');
   if(titulo) titulo.textContent='📝 Lançar operação';
   const btn=document.getElementById('btn-add-op');
@@ -1789,21 +1806,23 @@ function filtrarOp(f,el){
   renderOperacoes();
 }
 function definirPmManual(){
-  const ativo=document.getElementById('pm-ativo').value.trim().toUpperCase();
+  const sel=document.getElementById('pm-ativo');
+  const ativo=sel.value;
   const valor=parseFloat(document.getElementById('pm-valor').value);
-  if(!ativo){ alert('Informe o ticker.'); return; }
+  if(!ativo){ alert('Selecione o ativo.'); return; }
   if(!valor||valor<=0){ alert('Informe um valor de PM válido.'); return; }
-  if(!ativosCadastrados[ativo]) ativosCadastrados[ativo]={mercado:'EUA',pmManual:null};
+  const ativoInfo=listaAtivosDisponiveis().find(a=>a.ticker===ativo);
+  const mercado=ativoInfo?ativoInfo.mercado:'EUA';
+  if(!ativosCadastrados[ativo]) ativosCadastrados[ativo]={mercado,pmManual:null};
   ativosCadastrados[ativo].pmManual=valor;
   salvarAtivosCadastrados();
-  document.getElementById('pm-ativo').value='';
   document.getElementById('pm-valor').value='';
   renderOperacoes();
   alert('PM manual definido para '+ativo+'.');
 }
 function removerPmManual(){
-  const ativo=document.getElementById('pm-ativo').value.trim().toUpperCase();
-  if(!ativo){ alert('Informe o ticker.'); return; }
+  const ativo=document.getElementById('pm-ativo').value;
+  if(!ativo){ alert('Selecione o ativo.'); return; }
   if(ativosCadastrados[ativo]){
     ativosCadastrados[ativo].pmManual=null;
     salvarAtivosCadastrados();
@@ -1819,16 +1838,113 @@ function renderOperacoes(){
   if(filtroOp!=='todos') ops=ops.filter(o=>o.mercado===filtroOp);
   if(!ops.length){
     lista.innerHTML='<div class="empty-state">Nenhuma operação ainda.<br>Lance sua primeira compra ou venda acima.</div>';
+  } else {
+    lista.innerHTML=ops.map(op=>{
+      const sinal = op.tipo==='compra' ? 'pos' : 'neg';
+      const icon = op.tipo==='compra' ? '🟢' : '🔴';
+      const moeda = op.mercado==='EUA' ? 'US$' : 'R$';
+      const total = op.qtd*op.preco;
+      const ds = new Date(op.data+'T12:00:00').toLocaleDateString('pt-BR');
+      return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon">'+icon+'</div><div><div class="lanc-desc">'+op.ativo+' · '+(op.tipo==='compra'?'Compra':'Venda')+'</div><div class="lanc-cat">'+op.mercado+' · '+op.qtd+' un. @ '+moeda+op.preco.toFixed(2)+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div><div class="lanc-val '+sinal+'">'+moeda+' '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><button class="btn-del" onclick="editarOperacao('+op.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarOperacao('+op.id+')" title="Remover">✕</button></div></div>';
+    }).join('');
+  }
+  atualizarListaAtivosOp();
+}
+
+// Combina os ativos fixos do CART com os cadastrados dinamicamente via operações,
+// retornando uma lista única sem duplicatas: [{ticker, mercado}]
+function listaAtivosDisponiveis(){
+  const vistos={};
+  const lista=[];
+  if(typeof CART!=='undefined'){
+    Object.keys(CART).forEach(k=>{
+      const ticker=k.replace('.SA','');
+      const mercado=CART[k].m==='BRL'?'BR':'EUA';
+      const chave=ticker+'|'+mercado;
+      if(!vistos[chave]){ vistos[chave]=true; lista.push({ticker,mercado}); }
+    });
+  }
+  Object.keys(ativosCadastrados).forEach(ticker=>{
+    const mercado=ativosCadastrados[ticker].mercado;
+    const chave=ticker+'|'+mercado;
+    if(!vistos[chave]){ vistos[chave]=true; lista.push({ticker,mercado}); }
+  });
+  lista.sort((a,b)=>a.ticker.localeCompare(b.ticker));
+  return lista;
+}
+
+function preencherSelectAtivos(selectEl, mercadoFiltro, valorAtual){
+  if(!selectEl) return;
+  const lista=listaAtivosDisponiveis().filter(a=>!mercadoFiltro||a.mercado===mercadoFiltro);
+  selectEl.innerHTML='<option value="">Selecione o ativo...</option>'+
+    lista.map(a=>'<option value="'+a.ticker+'">'+a.ticker+' ('+a.mercado+')</option>').join('');
+  if(valorAtual) selectEl.value=valorAtual;
+}
+
+function atualizarListaAtivosOp(){
+  const mercado=document.getElementById('op-mercado')?.value;
+  const selOp=document.getElementById('op-ativo');
+  const valorAtualOp=selOp?selOp.value:'';
+  preencherSelectAtivos(selOp,mercado,valorAtualOp);
+
+  const selPm=document.getElementById('pm-ativo');
+  const valorAtualPm=selPm?selPm.value:'';
+  preencherSelectAtivos(selPm,null,valorAtualPm);
+
+  atualizarInfoPosicaoOp();
+}
+
+// Calcula a posição atual de um ativo combinando o CART fixo (posição inicial)
+// com o histórico dinâmico de operações já lançadas para ele.
+function posicaoAtualDoAtivo(ticker,mercado){
+  let qtd=0, custoTotal=0;
+  if(typeof CART!=='undefined'){
+    const chaveCart = mercado==='BR' ? ticker+'.SA' : ticker;
+    if(CART[chaveCart]){
+      qtd = CART[chaveCart].qtd;
+      custoTotal = CART[chaveCart].qtd * CART[chaveCart].pm;
+    }
+  }
+  const ops=operacoes.filter(o=>o.ativo===ticker && o.mercado===mercado).sort((a,b)=>new Date(a.data)-new Date(b.data));
+  ops.forEach(op=>{
+    if(op.tipo==='compra'){
+      custoTotal += op.qtd*op.preco;
+      qtd += op.qtd;
+    } else {
+      const pmAtual = qtd>0 ? (custoTotal/qtd) : 0;
+      qtd -= op.qtd;
+      custoTotal -= op.qtd*pmAtual;
+      if(qtd<0.0000001){ qtd=0; custoTotal=0; }
+    }
+  });
+  const pm = qtd>0 ? (custoTotal/qtd) : 0;
+  const cadastro=ativosCadastrados[ticker];
+  const pmFinal=(cadastro && cadastro.pmManual!=null) ? cadastro.pmManual : pm;
+  return {qtd,pm:pmFinal};
+}
+
+function atualizarInfoPosicaoOp(){
+  const tipo=document.getElementById('op-tipo')?.value;
+  const ticker=document.getElementById('op-ativo')?.value;
+  const mercado=document.getElementById('op-mercado')?.value;
+  const infoEl=document.getElementById('op-info-posicao');
+  if(!infoEl) return;
+  if(tipo!=='venda' || !ticker){
+    infoEl.style.display='none';
     return;
   }
-  lista.innerHTML=ops.map(op=>{
-    const sinal = op.tipo==='compra' ? 'pos' : 'neg';
-    const icon = op.tipo==='compra' ? '🟢' : '🔴';
-    const moeda = op.mercado==='EUA' ? 'US$' : 'R$';
-    const total = op.qtd*op.preco;
-    const ds = new Date(op.data+'T12:00:00').toLocaleDateString('pt-BR');
-    return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon">'+icon+'</div><div><div class="lanc-desc">'+op.ativo+' · '+(op.tipo==='compra'?'Compra':'Venda')+'</div><div class="lanc-cat">'+op.mercado+' · '+op.qtd+' un. @ '+moeda+op.preco.toFixed(2)+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div><div class="lanc-val '+sinal+'">'+moeda+' '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><button class="btn-del" onclick="editarOperacao('+op.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarOperacao('+op.id+')" title="Remover">✕</button></div></div>';
-  }).join('');
+  const pos=posicaoAtualDoAtivo(ticker,mercado);
+  const moeda=mercado==='EUA'?'US$':'R$';
+  if(pos.qtd<=0){
+    infoEl.innerHTML='⚠️ Você não tem posição em '+ticker+' para vender.';
+    infoEl.style.background='#fcebeb';
+    infoEl.style.color='#791f1f';
+  } else {
+    infoEl.innerHTML='Você tem <strong>'+pos.qtd+'</strong> ações de '+ticker+' · PM atual: <strong>'+moeda+' '+pos.pm.toFixed(2)+'</strong>';
+    infoEl.style.background='#f5f5f0';
+    infoEl.style.color='#333';
+  }
+  infoEl.style.display='block';
 }
 
 let editandoId=null, editandoTipo=null;
