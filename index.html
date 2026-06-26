@@ -135,7 +135,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAviAWydDX0Eka6N5rxL2byvFqoqy9qS-A",
@@ -192,6 +192,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     return signInWithEmailAndPassword(fbAuth, email, senha);
   };
 
+  window.fbCadastrar = function(email, senha){
+    return createUserWithEmailAndPassword(fbAuth, email, senha);
+  };
+
   window.fbLogout = function(){
     return signOut(fbAuth);
   };
@@ -225,11 +229,24 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 <div id="app-login-box" style="max-width:360px;margin:80px auto;text-align:center;display:none">
   <div style="font-size:40px;margin-bottom:10px">📊</div>
   <div style="font-size:18px;font-weight:600;margin-bottom:4px">Monitor Financeiro</div>
-  <div style="font-size:12px;color:#888;margin-bottom:20px">Faça login para acessar seu painel</div>
-  <input type="email" id="app-login-email" placeholder="Email" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
-  <input type="password" id="app-login-senha" placeholder="Senha" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
-  <button onclick="fazerLoginApp()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Entrar</button>
-  <div id="app-login-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
+  <div style="font-size:12px;color:#888;margin-bottom:20px" id="app-auth-subtitle">Faça login para acessar seu painel</div>
+
+  <div id="app-login-mode">
+    <input type="email" id="app-login-email" placeholder="Email" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+    <input type="password" id="app-login-senha" placeholder="Senha" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+    <button onclick="fazerLoginApp()" style="width:100%;padding:10px;background:#534AB7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Entrar</button>
+    <div id="app-login-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
+    <div style="font-size:12px;color:#888;margin-top:14px">Não tem conta? <a href="#" onclick="alternarModoAuth('cadastro');return false;" style="color:#534AB7;font-weight:600">Criar conta</a></div>
+  </div>
+
+  <div id="app-cadastro-mode" style="display:none">
+    <input type="email" id="app-cad-email" placeholder="Email" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+    <input type="password" id="app-cad-senha" placeholder="Senha (mínimo 6 caracteres)" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+    <input type="password" id="app-cad-senha2" placeholder="Confirmar senha" style="width:100%;padding:10px;margin-bottom:8px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box">
+    <button onclick="fazerCadastroApp()" style="width:100%;padding:10px;background:#27ae60;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Criar conta</button>
+    <div id="app-cadastro-erro" style="color:#A32D2D;font-size:12px;margin-top:8px"></div>
+    <div style="font-size:12px;color:#888;margin-top:14px">Já tem conta? <a href="#" onclick="alternarModoAuth('login');return false;" style="color:#534AB7;font-weight:600">Fazer login</a></div>
+  </div>
 </div>
 
 <div id="app-content" style="display:none">
@@ -244,7 +261,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       <span id="eye-txt">👁</span>
       <span id="hide-label">Ocultar valores</span>
     </button>
-    <button class="btn-hide" onclick="fazerLogoutApp()" title="Sair">🚪</button>
+    <button class="btn-hide" onclick="fazerLogoutApp()">Sair</button>
   </div>
 </div>
 
@@ -1108,6 +1125,41 @@ window.fazerLoginApp = function(){
 
 window.fazerLogoutApp = function(){
   if(window.fbLogout) window.fbLogout();
+};
+
+window.alternarModoAuth = function(modo){
+  const loginMode = document.getElementById('app-login-mode');
+  const cadastroMode = document.getElementById('app-cadastro-mode');
+  const subtitle = document.getElementById('app-auth-subtitle');
+  if(modo==='cadastro'){
+    loginMode.style.display='none';
+    cadastroMode.style.display='block';
+    if(subtitle) subtitle.textContent='Crie sua conta para acessar o painel';
+  } else {
+    loginMode.style.display='block';
+    cadastroMode.style.display='none';
+    if(subtitle) subtitle.textContent='Faça login para acessar seu painel';
+  }
+  document.getElementById('app-login-erro').textContent='';
+  document.getElementById('app-cadastro-erro').textContent='';
+};
+
+window.fazerCadastroApp = function(){
+  const email = document.getElementById('app-cad-email').value.trim();
+  const senha = document.getElementById('app-cad-senha').value;
+  const senha2 = document.getElementById('app-cad-senha2').value;
+  const erroEl = document.getElementById('app-cadastro-erro');
+  erroEl.textContent = '';
+  if(!email || !senha || !senha2){ erroEl.textContent='Preencha todos os campos.'; return; }
+  if(senha.length < 6){ erroEl.textContent='A senha precisa ter no mínimo 6 caracteres.'; return; }
+  if(senha !== senha2){ erroEl.textContent='As senhas não coincidem.'; return; }
+  if(window.fbCadastrar){
+    window.fbCadastrar(email, senha).catch(e=>{
+      if(e.code==='auth/email-already-in-use') erroEl.textContent='Este email já está cadastrado.';
+      else if(e.code==='auth/invalid-email') erroEl.textContent='Email inválido.';
+      else erroEl.textContent='Erro ao criar conta. Tente novamente.';
+    });
+  }
 };
 
 function fmtDataBackup(ts){
