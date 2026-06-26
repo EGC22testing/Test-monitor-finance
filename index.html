@@ -186,6 +186,38 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     });
   };
 
+  const operacoesRef = ref(fbDB, 'operacoes');
+
+  window.fbSalvarOperacoes = function(arr){
+    set(operacoesRef, arr).catch(e=>console.error('Erro ao salvar operações:', e));
+  };
+
+  window.fbOuvirOperacoes = function(callback){
+    onValue(operacoesRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(Array.isArray(data) ? data : (data ? Object.values(data) : []));
+    }, (error) => {
+      console.error('Erro ao ler operações:', error);
+      callback(null);
+    });
+  };
+
+  const ativosCadastradosRef = ref(fbDB, 'ativos_cadastrados');
+
+  window.fbSalvarAtivosCadastrados = function(obj){
+    set(ativosCadastradosRef, obj).catch(e=>console.error('Erro ao salvar ativos cadastrados:', e));
+  };
+
+  window.fbOuvirAtivosCadastrados = function(callback){
+    onValue(ativosCadastradosRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(data || {});
+    }, (error) => {
+      console.error('Erro ao ler ativos cadastrados:', error);
+      callback(null);
+    });
+  };
+
   const fbAuth = getAuth(fbApp);
 
   window.fbLogin = function(email, senha){
@@ -270,6 +302,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="tab" onclick="st('eua',this)">Carteira EUA</div>
   <div class="tab" onclick="st('br',this)">Carteira Brasil</div>
   <div class="tab" onclick="st('analise',this)">Análise & Score</div>
+  <div class="tab" onclick="st('operacoes',this)">📝 Minhas Operações</div>
   <div class="tab" onclick="st('financas',this)">💰 Finanças Pessoais</div>
 </div>
 
@@ -834,6 +867,57 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 </div>
 
+<!-- ═══════════════ MINHAS OPERAÇÕES ═══════════════ -->
+<div id="p-operacoes" class="panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+    <div style="font-size:11px;color:#888" id="op-sync-status">⏳ Conectando...</div>
+  </div>
+
+  <div class="fin-form" style="margin-bottom:1.2rem">
+    <h3 id="op-form-titulo">📝 Lançar operação</h3>
+    <div class="fin-row">
+      <select class="fin-select" id="op-mercado">
+        <option value="EUA">🇺🇸 EUA</option>
+        <option value="BR">🇧🇷 Brasil</option>
+      </select>
+      <select class="fin-select" id="op-tipo">
+        <option value="compra">Compra</option>
+        <option value="venda">Venda</option>
+      </select>
+    </div>
+    <input class="fin-input" id="op-ativo" placeholder="Ticker (ex: NVDA, WEGE3)" style="text-transform:uppercase">
+    <div class="fin-row">
+      <input class="fin-input" id="op-qtd" placeholder="Quantidade" type="number" min="0" step="0.00001">
+      <input class="fin-input" id="op-preco" placeholder="Preço unitário" type="number" min="0" step="0.01">
+    </div>
+    <input class="fin-input" id="op-data" type="date">
+    <button class="btn-add" id="btn-add-op" onclick="addOperacao()">+ Lançar operação</button>
+  </div>
+
+  <div class="fin-form" style="margin-bottom:1.2rem">
+    <h3>✏️ Ajuste manual de preço médio</h3>
+    <div style="font-size:11px;color:#888;margin-bottom:10px">Use isso se quiser sobrescrever o PM calculado automaticamente pelo histórico de operações de um ativo (ex: você já tinha a posição antes de começar a registrar aqui).</div>
+    <div class="fin-row">
+      <input class="fin-input" id="pm-ativo" placeholder="Ticker (ex: NVDA)" style="text-transform:uppercase">
+      <input class="fin-input" id="pm-valor" placeholder="PM manual (R$ ou US$)" type="number" min="0" step="0.01">
+    </div>
+    <button class="btn-add" style="background:#888" onclick="definirPmManual()">Salvar PM manual</button>
+    <button class="btn-add" style="background:none;border:1px solid #ddd;color:#666;margin-top:6px" onclick="removerPmManual()">Remover PM manual deste ativo</button>
+  </div>
+
+  <div class="lancamentos">
+    <div class="lanc-header">
+      <div class="lanc-title">Histórico de operações</div>
+      <div class="lanc-filters">
+        <div class="lanc-filter on" onclick="filtrarOp('todos',this)">Todos</div>
+        <div class="lanc-filter" onclick="filtrarOp('EUA',this)">EUA</div>
+        <div class="lanc-filter" onclick="filtrarOp('BR',this)">Brasil</div>
+      </div>
+    </div>
+    <div id="lista-op"><div class="empty-state">Nenhuma operação ainda.<br>Lance sua primeira compra ou venda acima.</div></div>
+  </div>
+</div>
+
 <!-- ═══════════════ FINANÇAS PESSOAIS ═══════════════ -->
 <div id="p-financas" class="panel">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
@@ -1095,6 +1179,7 @@ window.onFbAuthChange = function(user){
     if(loginBox) loginBox.style.display='none';
     if(content)  content.style.display='block';
     iniciarSyncFinancas();
+    iniciarSyncOperacoes();
     if(typeof fetchRT==='function' && !window._rtIniciado){
       window._rtIniciado=true;
       fetchRT();
@@ -1496,6 +1581,187 @@ function renderComparativoAno(){
   }
 }
 
+// ══════════════ MINHAS OPERAÇÕES (carteira dinâmica) ══════════════
+let operacoes=[], ativosCadastrados={}, filtroOp='todos', editandoOpId=null;
+let operacoesCarregadas=false, ativosCadastradosCarregados=false;
+
+function iniciarSyncOperacoes(){
+  if(window.fbOuvirOperacoes && window.fbOuvirAtivosCadastrados){
+    window.fbOuvirOperacoes((dados)=>{
+      if(dados!==null){
+        operacoes=dados;
+        operacoesCarregadas=true;
+        setOpSyncStatus('✅ Sincronizado','#27ae60');
+        renderOperacoes();
+      } else {
+        setOpSyncStatus('⚠️ Erro de sincronização','#854F0B');
+      }
+    });
+    window.fbOuvirAtivosCadastrados((dados)=>{
+      ativosCadastrados = dados || {};
+      ativosCadastradosCarregados=true;
+      renderOperacoes();
+    });
+  } else {
+    setTimeout(iniciarSyncOperacoes,300);
+  }
+}
+function setOpSyncStatus(msg,color){
+  const el=document.getElementById('op-sync-status');
+  if(el){el.textContent=msg;el.style.color=color;}
+}
+function salvarOperacoes(){ if(window.fbSalvarOperacoes) window.fbSalvarOperacoes(operacoes); }
+function salvarAtivosCadastrados(){ if(window.fbSalvarAtivosCadastrados) window.fbSalvarAtivosCadastrados(ativosCadastrados); }
+
+// Calcula, a partir do histórico de operações, a posição consolidada (qtd e PM) de cada ativo.
+// Se houver um pmManual cadastrado para o ativo, ele substitui o PM calculado.
+function calcularPosicoesCarteira(){
+  const porAtivo={};
+  const ops=[...operacoes].sort((a,b)=>new Date(a.data)-new Date(b.data));
+  ops.forEach(op=>{
+    if(!porAtivo[op.ativo]) porAtivo[op.ativo]={qtd:0,custoTotal:0,mercado:op.mercado};
+    const a=porAtivo[op.ativo];
+    a.mercado=op.mercado;
+    if(op.tipo==='compra'){
+      a.custoTotal += op.qtd*op.preco;
+      a.qtd += op.qtd;
+    } else { // venda — reduz qtd proporcionalmente ao custo médio atual
+      const pmAtual = a.qtd>0 ? (a.custoTotal/a.qtd) : 0;
+      a.qtd -= op.qtd;
+      a.custoTotal -= op.qtd*pmAtual;
+      if(a.qtd<0.0000001) { a.qtd=0; a.custoTotal=0; }
+    }
+  });
+  const resultado={};
+  Object.keys(porAtivo).forEach(ativo=>{
+    const a=porAtivo[ativo];
+    const pmCalculado = a.qtd>0 ? (a.custoTotal/a.qtd) : 0;
+    const cadastro = ativosCadastrados[ativo];
+    const pmFinal = (cadastro && cadastro.pmManual!=null) ? cadastro.pmManual : pmCalculado;
+    resultado[ativo]={ qtd:a.qtd, pm:pmFinal, pmCalculado, mercado:a.mercado, pmManual: cadastro?cadastro.pmManual:null };
+  });
+  return resultado;
+}
+
+function addOperacao(){
+  const mercado=document.getElementById('op-mercado').value;
+  const tipo=document.getElementById('op-tipo').value;
+  const ativo=document.getElementById('op-ativo').value.trim().toUpperCase();
+  const qtd=parseFloat(document.getElementById('op-qtd').value);
+  const preco=parseFloat(document.getElementById('op-preco').value);
+  const data=document.getElementById('op-data').value;
+  if(!ativo){ alert('Informe o ticker do ativo.'); return; }
+  if(!qtd||qtd<=0){ alert('Informe uma quantidade válida.'); return; }
+  if(!preco||preco<=0){ alert('Informe um preço válido.'); return; }
+  if(!data){ alert('Informe a data.'); return; }
+
+  if(editandoOpId!==null){
+    const idx=operacoes.findIndex(o=>o.id===editandoOpId);
+    if(idx>-1) operacoes[idx]={...operacoes[idx],mercado,tipo,ativo,qtd,preco,data};
+    cancelarEdicaoOp();
+  } else {
+    operacoes.push({id:Date.now(),mercado,tipo,ativo,qtd,preco,data});
+  }
+  if(!ativosCadastrados[ativo]){
+    ativosCadastrados[ativo]={mercado,pmManual:null};
+    salvarAtivosCadastrados();
+  }
+  salvarOperacoes();
+  ['op-ativo','op-qtd','op-preco','op-data'].forEach(id=>{document.getElementById(id).value='';});
+  renderOperacoes();
+}
+
+function editarOperacao(id){
+  const op=operacoes.find(o=>o.id===id);
+  if(!op) return;
+  editandoOpId=id;
+  document.getElementById('op-mercado').value=op.mercado;
+  document.getElementById('op-tipo').value=op.tipo;
+  document.getElementById('op-ativo').value=op.ativo;
+  document.getElementById('op-qtd').value=op.qtd;
+  document.getElementById('op-preco').value=op.preco;
+  document.getElementById('op-data').value=op.data;
+  const titulo=document.getElementById('op-form-titulo');
+  if(titulo) titulo.textContent='✏️ Editando operação';
+  const btn=document.getElementById('btn-add-op');
+  if(btn){
+    btn.textContent='💾 Salvar alteração';
+    if(!document.getElementById('btn-cancel-op')){
+      const cancelBtn=document.createElement('button');
+      cancelBtn.id='btn-cancel-op';
+      cancelBtn.textContent='Cancelar edição';
+      cancelBtn.style='width:100%;padding:6px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#666;font-size:11px;cursor:pointer;margin-top:5px';
+      cancelBtn.onclick=cancelarEdicaoOp;
+      btn.insertAdjacentElement('afterend',cancelBtn);
+    }
+  }
+  document.getElementById('op-ativo').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelarEdicaoOp(){
+  editandoOpId=null;
+  ['op-ativo','op-qtd','op-preco','op-data'].forEach(id=>{document.getElementById(id).value='';});
+  const titulo=document.getElementById('op-form-titulo');
+  if(titulo) titulo.textContent='📝 Lançar operação';
+  const btn=document.getElementById('btn-add-op');
+  if(btn) btn.textContent='+ Lançar operação';
+  const cancelBtn=document.getElementById('btn-cancel-op');
+  if(cancelBtn) cancelBtn.remove();
+}
+function deletarOperacao(id){
+  if(!confirm('Remover esta operação? Isso vai recalcular a posição do ativo.')) return;
+  operacoes=operacoes.filter(o=>o.id!==id);
+  salvarOperacoes();
+  renderOperacoes();
+}
+function filtrarOp(f,el){
+  filtroOp=f;
+  document.querySelectorAll('#p-operacoes .lanc-filter').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  renderOperacoes();
+}
+function definirPmManual(){
+  const ativo=document.getElementById('pm-ativo').value.trim().toUpperCase();
+  const valor=parseFloat(document.getElementById('pm-valor').value);
+  if(!ativo){ alert('Informe o ticker.'); return; }
+  if(!valor||valor<=0){ alert('Informe um valor de PM válido.'); return; }
+  if(!ativosCadastrados[ativo]) ativosCadastrados[ativo]={mercado:'EUA',pmManual:null};
+  ativosCadastrados[ativo].pmManual=valor;
+  salvarAtivosCadastrados();
+  document.getElementById('pm-ativo').value='';
+  document.getElementById('pm-valor').value='';
+  renderOperacoes();
+  alert('PM manual definido para '+ativo+'.');
+}
+function removerPmManual(){
+  const ativo=document.getElementById('pm-ativo').value.trim().toUpperCase();
+  if(!ativo){ alert('Informe o ticker.'); return; }
+  if(ativosCadastrados[ativo]){
+    ativosCadastrados[ativo].pmManual=null;
+    salvarAtivosCadastrados();
+    renderOperacoes();
+    alert('PM manual removido para '+ativo+'. Voltando a usar o cálculo automático.');
+  }
+}
+function renderOperacoes(){
+  if(!operacoesCarregadas || !ativosCadastradosCarregados) return;
+  const lista=document.getElementById('lista-op');
+  if(!lista) return;
+  let ops=[...operacoes].sort((a,b)=>new Date(b.data)-new Date(a.data));
+  if(filtroOp!=='todos') ops=ops.filter(o=>o.mercado===filtroOp);
+  if(!ops.length){
+    lista.innerHTML='<div class="empty-state">Nenhuma operação ainda.<br>Lance sua primeira compra ou venda acima.</div>';
+    return;
+  }
+  lista.innerHTML=ops.map(op=>{
+    const sinal = op.tipo==='compra' ? 'pos' : 'neg';
+    const icon = op.tipo==='compra' ? '🟢' : '🔴';
+    const moeda = op.mercado==='EUA' ? 'US$' : 'R$';
+    const total = op.qtd*op.preco;
+    const ds = new Date(op.data+'T12:00:00').toLocaleDateString('pt-BR');
+    return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon">'+icon+'</div><div><div class="lanc-desc">'+op.ativo+' · '+(op.tipo==='compra'?'Compra':'Venda')+'</div><div class="lanc-cat">'+op.mercado+' · '+op.qtd+' un. @ '+moeda+op.preco.toFixed(2)+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div><div class="lanc-val '+sinal+'">'+moeda+' '+total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><button class="btn-del" onclick="editarOperacao('+op.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarOperacao('+op.id+')" title="Remover">✕</button></div></div>';
+  }).join('');
+}
+
 let editandoId=null, editandoTipo=null;
 function addLanc(tipo){const desc=document.getElementById(tipo+'-desc').value.trim();const val=parseFloat(document.getElementById(tipo+'-val').value);const data=document.getElementById(tipo+'-data').value;const cat=document.getElementById(tipo+'-cat').value;const status=document.getElementById(tipo+'-status').value;const recorrente=document.getElementById(tipo+'-recorrente').checked;if(!desc){alert('Informe a descrição');return;}if(!val||val<=0){alert('Informe um valor válido');return;}if(!data){alert('Informe a data');return;}
   if(editandoId!==null && editandoTipo===tipo){
@@ -1593,7 +1859,7 @@ function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').f
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
 function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();}
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="editarLanc('+l.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
-window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
+window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data','op-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
 // ── COTAÇÕES EM TEMPO REAL ──────────────────────────────
 const WORKER_URL = 'https://patient-bread-511a.eliasgebers.workers.dev/';
