@@ -2153,7 +2153,19 @@ function fmtIdx(v){
 async function fetchRT(){
   setStatus('⏳ Buscando cotações...','#888');
   try{
-    const r = await fetch(WORKER_URL);
+    // Identifica ativos sem card fixo (cadastrados via Minhas Operações) para
+    // pedir cotação dinâmica ao Worker, sem precisar tê-los hardcoded nele.
+    let url = WORKER_URL;
+    if(typeof getPosicaoCompleta === 'function'){
+      const posicoes = getPosicaoCompleta();
+      const extras = Object.entries(posicoes)
+        .filter(([ticker, info]) => !info.temCardFixo)
+        .map(([ticker, info]) => ticker+':'+info.mercado);
+      if(extras.length){
+        url += '?extras='+encodeURIComponent(extras.join(','));
+      }
+    }
+    const r = await fetch(url);
     if(!r.ok) throw new Error('HTTP '+r.status);
     const json = await r.json();
 
