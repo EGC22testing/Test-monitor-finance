@@ -727,6 +727,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
   </div>
+
+  <div id="cards-eua-dinamicos"></div>
 </div>
 
 <!-- ═══════════════ BR ═══════════════ -->
@@ -869,6 +871,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
   </div>
+
+  <div id="cards-br-dinamicos"></div>
 </div>
 
 <!-- ═══════════════ ANÁLISE ═══════════════ -->
@@ -885,7 +889,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       <div class="ds" style="margin-bottom:10px">Ranking B&H — qualidade e perspectiva (09/06/2026)</div>
       <table class="tbl">
         <thead><tr><th>#</th><th>Ativo</th><th>Resultado</th><th>Semana</th><th>Perspectiva</th><th>Ação</th></tr></thead>
-        <tbody>
+        <tbody id="ranking-tbody">
           <tr><td>1</td><td><strong>NVDA</strong></td><td id="rk-NVDA-res" class="pos">+103,2%</td><td id="rk-NVDA-sem" class="neg">-1,3%</td><td>Strong Buy · Revenue +65% · target +46%</td><td><span class="pill pbuy">Manter</span></td></tr>
           <tr><td>2</td><td><strong>IAU</strong></td><td id="rk-IAU-res" class="pos">+36,2%</td><td id="rk-IAU-sem" class="pos">+0,3%</td><td>Único ativo positivo na sex · hedge ideal</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
           <tr><td>3</td><td><strong>AMZN</strong></td><td id="rk-AMZN-res" class="pos">+41,8%</td><td id="rk-AMZN-sem" class="pos">+0,1%</td><td>AWS +17% · Prime Day 23/06 · target +27%</td><td><span class="pill pbuy">Manter</span></td></tr>
@@ -929,9 +933,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
         <option value="venda">Venda</option>
       </select>
     </div>
-    <select class="fin-select" id="op-ativo" onchange="atualizarInfoPosicaoOp()">
+    <select class="fin-select" id="op-ativo" onchange="onMudarSelectAtivo()">
       <option value="">Selecione o ativo...</option>
     </select>
+    <input class="fin-input" id="op-ativo-novo" placeholder="Digite o ticker novo (ex: AAPL, BBAS3)" style="display:none;text-transform:uppercase" oninput="atualizarInfoPosicaoOp()">
     <div id="op-info-posicao" style="display:none;font-size:11px;background:#f5f5f0;border-radius:7px;padding:8px 10px;margin-bottom:7px"></div>
     <div class="fin-row">
       <input class="fin-input" id="op-qtd" placeholder="Quantidade" type="number" min="0" step="0.00001">
@@ -1667,6 +1672,7 @@ function iniciarSyncOperacoes(){
         operacoesCarregadas=true;
         setOpSyncStatus('✅ Sincronizado','#27ae60');
         renderOperacoes();
+        if(Object.keys(QT).length>0){ renderRT(); updateTabela(); updateRanking(); }
       } else {
         setOpSyncStatus('⚠️ Erro de sincronização','#854F0B');
       }
@@ -1675,6 +1681,7 @@ function iniciarSyncOperacoes(){
       ativosCadastrados = dados || {};
       ativosCadastradosCarregados=true;
       renderOperacoes();
+      if(Object.keys(QT).length>0){ renderRT(); updateTabela(); updateRanking(); }
     });
   } else {
     setTimeout(iniciarSyncOperacoes,300);
@@ -1720,11 +1727,11 @@ function calcularPosicoesCarteira(){
 function addOperacao(){
   const mercado=document.getElementById('op-mercado').value;
   const tipo=document.getElementById('op-tipo').value;
-  const ativo=document.getElementById('op-ativo').value;
+  const ativo=getAtivoSelecionadoOp();
   const qtd=parseFloat(document.getElementById('op-qtd').value);
   const preco=parseFloat(document.getElementById('op-preco').value);
   const data=document.getElementById('op-data').value;
-  if(!ativo){ alert('Selecione o ativo.'); return; }
+  if(!ativo){ alert('Selecione o ativo ou digite o ticker do novo ativo.'); return; }
   if(!qtd||qtd<=0){ alert('Informe uma quantidade válida.'); return; }
   if(!preco||preco<=0){ alert('Informe um preço válido.'); return; }
   if(!data){ alert('Informe a data.'); return; }
@@ -1749,6 +1756,9 @@ function addOperacao(){
     salvarAtivosCadastrados();
   }
   salvarOperacoes();
+  document.getElementById('op-ativo-novo').style.display='none';
+  document.getElementById('op-ativo-novo').value='';
+  atualizarListaAtivosOp();
   ['op-qtd','op-preco'].forEach(id=>{document.getElementById(id).value='';});
   atualizarInfoPosicaoOp();
   renderOperacoes();
@@ -1873,23 +1883,47 @@ function listaAtivosDisponiveis(){
   return lista;
 }
 
-function preencherSelectAtivos(selectEl, mercadoFiltro, valorAtual){
+function preencherSelectAtivos(selectEl, mercadoFiltro, valorAtual, incluirNovo){
   if(!selectEl) return;
   const lista=listaAtivosDisponiveis().filter(a=>!mercadoFiltro||a.mercado===mercadoFiltro);
-  selectEl.innerHTML='<option value="">Selecione o ativo...</option>'+
+  let html='<option value="">Selecione o ativo...</option>'+
     lista.map(a=>'<option value="'+a.ticker+'">'+a.ticker+' ('+a.mercado+')</option>').join('');
+  if(incluirNovo) html+='<option value="__novo__">+ Novo ativo...</option>';
+  selectEl.innerHTML=html;
   if(valorAtual) selectEl.value=valorAtual;
+}
+
+function onMudarSelectAtivo(){
+  const sel=document.getElementById('op-ativo');
+  const novoInput=document.getElementById('op-ativo-novo');
+  if(sel.value==='__novo__'){
+    novoInput.style.display='block';
+    novoInput.value='';
+    novoInput.focus();
+  } else {
+    novoInput.style.display='none';
+    novoInput.value='';
+  }
+  atualizarInfoPosicaoOp();
+}
+
+function getAtivoSelecionadoOp(){
+  const sel=document.getElementById('op-ativo');
+  if(sel.value==='__novo__'){
+    return document.getElementById('op-ativo-novo').value.trim().toUpperCase();
+  }
+  return sel.value;
 }
 
 function atualizarListaAtivosOp(){
   const mercado=document.getElementById('op-mercado')?.value;
   const selOp=document.getElementById('op-ativo');
   const valorAtualOp=selOp?selOp.value:'';
-  preencherSelectAtivos(selOp,mercado,valorAtualOp);
+  preencherSelectAtivos(selOp,mercado,valorAtualOp,true);
 
   const selPm=document.getElementById('pm-ativo');
   const valorAtualPm=selPm?selPm.value:'';
-  preencherSelectAtivos(selPm,null,valorAtualPm);
+  preencherSelectAtivos(selPm,null,valorAtualPm,false);
 
   atualizarInfoPosicaoOp();
 }
@@ -1923,9 +1957,48 @@ function posicaoAtualDoAtivo(ticker,mercado){
   return {qtd,pm:pmFinal};
 }
 
+// Retorna a posição combinada (CART fixo + operações) de TODOS os ativos da carteira,
+// incluindo ativos novos lançados via "Minhas Operações" que não têm card fixo no HTML.
+// Formato: { 'NVDA': {qtd, pm, mercado:'EUA', temCardFixo:true}, 'AAPL': {..., temCardFixo:false} }
+// Fallback usado enquanto operacoes/ativosCadastrados ainda não sincronizaram do Firebase —
+// evita que o painel fique vazio no primeiro instante, mostrando ao menos a posição fixa conhecida.
+function getPosicaoCompletaFallbackCart(){
+  const resultado={};
+  Object.keys(CART).forEach(chave=>{
+    const ticker=chave.replace('.SA','');
+    const mercado=CART[chave].m==='BRL'?'BR':'EUA';
+    resultado[ticker]={qtd:CART[chave].qtd,pm:CART[chave].pm,mercado,temCardFixo:true};
+  });
+  return resultado;
+}
+
+function getPosicaoCompleta(){
+  if(!operacoesCarregadas || !ativosCadastradosCarregados) return typeof CART!=='undefined' ? getPosicaoCompletaFallbackCart() : {};
+  const tickers={};
+  if(typeof CART!=='undefined'){
+    Object.keys(CART).forEach(chave=>{
+      const ticker=chave.replace('.SA','');
+      const mercado=CART[chave].m==='BRL'?'BR':'EUA';
+      tickers[ticker+'|'+mercado]={ticker,mercado,temCardFixo:true};
+    });
+  }
+  operacoes.forEach(op=>{
+    const k=op.ativo+'|'+op.mercado;
+    if(!tickers[k]) tickers[k]={ticker:op.ativo,mercado:op.mercado,temCardFixo:false};
+  });
+  const resultado={};
+  Object.values(tickers).forEach(({ticker,mercado,temCardFixo})=>{
+    const pos=posicaoAtualDoAtivo(ticker,mercado);
+    if(pos.qtd>0.0000001){
+      resultado[ticker]={qtd:pos.qtd,pm:pos.pm,mercado,temCardFixo};
+    }
+  });
+  return resultado;
+}
+
 function atualizarInfoPosicaoOp(){
   const tipo=document.getElementById('op-tipo')?.value;
-  const ticker=document.getElementById('op-ativo')?.value;
+  const ticker=getAtivoSelecionadoOp();
   const mercado=document.getElementById('op-mercado')?.value;
   const infoEl=document.getElementById('op-info-posicao');
   if(!infoEl) return;
@@ -2150,60 +2223,139 @@ function startCountdown(){
   }, 1000);
 }
 
+// Gera ou atualiza um card visual simples para ativos sem card fixo no HTML
+// (ativos lançados via "Minhas Operações" que ainda não existiam na carteira original).
+function renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao){
+  const containerId = 'cards-'+info.mercado.toLowerCase()+'-dinamicos';
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  const moeda = info.mercado==='EUA' ? 'US$' : 'R$';
+  let card = container.querySelector('[data-ticker="'+ticker+'"]');
+  if(!card){
+    card = document.createElement('div');
+    card.className='ativo';
+    card.dataset.ticker=ticker;
+    card.innerHTML =
+      '<div class="ah" onclick="this.parentElement.querySelector(\'.det\').classList.toggle(\'op\');this.querySelector(\'.chev\').style.transform=this.parentElement.querySelector(\'.det\').classList.contains(\'op\')?\'rotate(180deg)\':\'\'">'+
+        '<div class="aleft"><div class="tb">'+ticker+'</div><div><div class="an">'+ticker+'</div><div class="as">Lançado via Minhas Operações</div></div></div>'+
+        '<div class="aright">'+
+          '<div><div class="pr"></div><div class="pm"></div></div>'+
+          '<span class="vb"></span>'+
+          '<div class="res"></div>'+
+          '<span class="chev">▼</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="det">'+
+        '<div class="dg">'+
+          '<div class="dc"><div class="ds">Posição</div>'+
+            '<div class="kv"><span class="kk">Qtd</span><span class="vv vv-qtd"></span></div>'+
+            '<div class="kv"><span class="kk">PM</span><span class="vv vv-pm"></span></div>'+
+            '<div class="kv"><span class="kk">Custo</span><span class="vv vv-custo"></span></div>'+
+            '<div class="kv"><span class="kk">Posição atual</span><span class="vv vv-pos"></span></div>'+
+            '<div class="kv"><span class="kk">Resultado</span><span class="vv vv-res"></span></div>'+
+            '<div class="kv"><span class="kk">Preço hoje</span><span class="vv vv-preco"></span></div>'+
+            '<div class="kv"><span class="kk">Var. dia</span><span class="vv vv-vardia"></span></div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    container.appendChild(card);
+  }
+  const prEl=card.querySelector('.pr');
+  if(prEl) prEl.textContent=(info.mercado==='EUA'?fU(p):fB(p))+(temCotacao?'':' (PM — sem cotação ao vivo)');
+  const pmHeadEl=card.querySelector('.pm');
+  if(pmHeadEl) pmHeadEl.textContent=info.qtd+' ações · PM '+moeda+info.pm.toFixed(2);
+  const vbEl=card.querySelector('.vb');
+  if(vbEl){ vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia'; vbEl.className='vb '+(vp>=0?'vp':'vn'); }
+  const rsEl=card.querySelector('.res');
+  if(rsEl){ rsEl.textContent=(res>=0?'+':'')+(info.mercado==='EUA'?fU(res):fB(res)); rsEl.className='res '+(res>=0?'pos':'neg'); }
+  card.querySelector('.vv-qtd').textContent=info.qtd;
+  card.querySelector('.vv-pm').textContent=moeda+' '+info.pm.toFixed(2);
+  card.querySelector('.vv-custo').textContent=moeda+' '+cst.toFixed(2);
+  card.querySelector('.vv-pos').textContent=info.mercado==='EUA'?fU(pos):fB(pos);
+  card.querySelector('.vv-res').textContent=(res>=0?'+':'')+(info.mercado==='EUA'?fU(res):fB(res))+' ('+(pct>=0?'+':'')+fn(pct)+'%)';
+  card.querySelector('.vv-preco').textContent=info.mercado==='EUA'?fU(p):fB(p);
+  card.querySelector('.vv-vardia').textContent=(vp>=0?'+':'')+fn(vp)+'%';
+}
+
 function renderRT(){
   let totEUA_pos=0, totEUA_cst=0, totBR_pos=0, totBR_cst=0;
+  const posicoes = getPosicaoCompleta();
+  const idsVistos = {EUA:[], BR:[]};
 
-  Object.entries(CART).forEach(([sym, info])=>{
-    const q = QT[sym]; if(!q) return;
-    const p   = q.regularMarketPrice;
-    const vp  = q.regularMarketChangePercent || 0;
+  Object.entries(posicoes).forEach(([ticker, info])=>{
+    const symKey = info.mercado==='BR' ? ticker+'.SA' : ticker;
+    const q = QT[symKey] || QT[ticker];
+    const p   = q ? q.regularMarketPrice : info.pm;
+    const vp  = q ? (q.regularMarketChangePercent || 0) : 0;
+    const temCotacao = !!q;
     const pos = p * info.qtd;
     const cst = info.pm * info.qtd;
     const res = pos - cst;
-    const pct = ((pos - cst) / cst) * 100;
+    const pct = cst>0 ? ((pos - cst) / cst) * 100 : 0;
+    const moedaUSD = info.mercado==='EUA';
 
-    const ativo = document.querySelector('[id="c-'+info.id+'"]')?.closest('.ativo');
-    if(ativo){
-      const prEl = ativo.querySelector('.pr');
-      if(prEl) prEl.textContent = info.m==='USD' ? fU(p) : fB(p);
-      const vbEl = ativo.querySelector('.vb');
-      if(vbEl){ vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia'; vbEl.className='vb '+(vp>=0?'vp':'vn'); }
-      const rsEl = ativo.querySelector('.res');
-      if(rsEl){ rsEl.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res)); rsEl.className='res '+(res>=0?'pos':'neg'); }
+    if(info.temCardFixo){
+      const idDom = CART[symKey]?.id || CART[ticker]?.id;
+      idsVistos[info.mercado].push(idDom);
+      const ativo = document.querySelector('[id="c-'+idDom+'"]')?.closest('.ativo');
+      if(ativo){
+        const prEl = ativo.querySelector('.pr');
+        if(prEl) prEl.textContent = (moedaUSD ? fU(p) : fB(p)) + (temCotacao?'':' (PM)');
+        const pmEl = ativo.querySelector('.pm');
+        if(pmEl) pmEl.textContent = info.qtd+' ações · PM '+(moedaUSD?'US$':'R$')+info.pm.toFixed(2);
+        const vbEl = ativo.querySelector('.vb');
+        if(vbEl){ vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia'; vbEl.className='vb '+(vp>=0?'vp':'vn'); }
+        const rsEl = ativo.querySelector('.res');
+        if(rsEl){ rsEl.textContent=(res>=0?'+':'')+(moedaUSD?fU(res):fB(res)); rsEl.className='res '+(res>=0?'pos':'neg'); }
+      }
+      const det = document.getElementById(idDom);
+      if(det){
+        det.querySelectorAll('.kv').forEach(kv=>{
+          const k=kv.querySelector('.kk'), v=kv.querySelector('.vv');
+          if(!k||!v) return;
+          const kt = k.textContent.trim();
+          if(kt==='Qtd')            v.textContent = info.qtd;
+          if(kt==='PM')             v.textContent = (moedaUSD?'US$ ':'R$ ')+info.pm.toFixed(2);
+          if(kt==='Custo')          v.textContent = (moedaUSD?'US$ ':'R$ ')+cst.toFixed(2);
+          if(kt==='Posição atual')  v.textContent = moedaUSD ? fU(pos) : fB(pos);
+          if(kt==='Resultado')      v.textContent = (res>=0?'+':'')+(moedaUSD?fU(res):fB(res))+' ('+(pct>=0?'+':'')+fn(pct)+'%)';
+          if(kt==='Preço hoje')     v.textContent = moedaUSD ? fU(p) : fB(p);
+          if(kt==='Var. dia')       v.textContent = (vp>=0?'+':'')+fn(vp)+'%';
+        });
+      }
+    } else {
+      renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao);
     }
 
-    const det = document.getElementById(info.id);
-    if(det){
-      det.querySelectorAll('.kv').forEach(kv=>{
-        const k=kv.querySelector('.kk'), v=kv.querySelector('.vv');
-        if(!k||!v) return;
-        const kt = k.textContent.trim();
-        if(kt==='Posição atual') v.textContent = info.m==='USD' ? fU(pos) : fB(pos);
-        if(kt==='Resultado')     v.textContent = (res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res))+' ('+(pct>=0?'+':'')+fn(pct)+'%)';
-        if(kt==='Preço hoje')    v.textContent = info.m==='USD' ? fU(p) : fB(p);
-        if(kt==='Var. dia')      v.textContent = (vp>=0?'+':'')+fn(vp)+'%';
-      });
-    }
+    if(info.mercado==='EUA'){ totEUA_pos+=pos; totEUA_cst+=cst; }
+    else                    { totBR_pos +=pos; totBR_cst +=cst; }
+  });
 
-    if(info.m==='USD'){ totEUA_pos+=pos; totEUA_cst+=cst; }
-    else              { totBR_pos +=pos; totBR_cst +=cst; }
+  // Remove cards dinâmicos de ativos que não têm mais posição (foram zerados/vendidos)
+  ['EUA','BR'].forEach(mercado=>{
+    const container=document.getElementById('cards-'+mercado.toLowerCase()+'-dinamicos');
+    if(!container) return;
+    Array.from(container.children).forEach(card=>{
+      const ticker=card.dataset.ticker;
+      if(!posicoes[ticker] || posicoes[ticker].mercado!==mercado) card.remove();
+    });
   });
 
   // Totais EUA
-  const rEUA=totEUA_pos-totEUA_cst, pEUA=(rEUA/totEUA_cst)*100;
+  const rEUA=totEUA_pos-totEUA_cst, pEUA=totEUA_cst>0?(rEUA/totEUA_cst)*100:0;
   setEl('rt-eua-pos', fU(totEUA_pos));
   setEl('rt-eua-res', (rEUA>=0?'+':'')+fU(Math.abs(rEUA)));
   setEl('rt-eua-pct', (pEUA>=0?'+':'')+fn(pEUA)+'%');
 
   // Totais BR
-  const rBR=totBR_pos-totBR_cst, pBR=(rBR/totBR_cst)*100;
+  const rBR=totBR_pos-totBR_cst, pBR=totBR_cst>0?(rBR/totBR_cst)*100:0;
   setEl('rt-br-pos', fB(totBR_pos));
   setEl('rt-br-res', (rBR>=0?'+':'')+fB(Math.abs(rBR)));
   setEl('rt-br-pct', (pBR>=0?'+':'')+fn(pBR)+'%');
 
   // Consolidado
   const euaBRL=totEUA_pos*rtDolar, pat=euaBRL+totBR_pos;
-  const custoT=totEUA_cst*rtDolar+totBR_cst, rT=pat-custoT, pT=(rT/custoT)*100;
+  const custoT=totEUA_cst*rtDolar+totBR_cst, rT=pat-custoT, pT=custoT>0?(rT/custoT)*100:0;
   setEl('rt-cons-pat', fB(pat));
   setEl('rt-cons-res', (rT>=0?'+':'')+fB(Math.abs(rT)));
   setEl('rt-cons-pct', (rT>=0?'+':'')+fn(pT)+'%');
@@ -2220,73 +2372,69 @@ function renderRT(){
 }
 
 function updateRanking(){
-  const rCart = {
-    'NVDA':     {qtd:0.49003, pm:103.21, m:'USD', sym:'NVDA'},
-    'AMZN':     {qtd:0.20138, pm:173.67, m:'USD', sym:'AMZN'},
-    'TSLA':     {qtd:0.18789, pm:279.46, m:'USD', sym:'TSLA'},
-    'LMT':      {qtd:0.03126, pm:479.75, m:'USD', sym:'LMT'},
-    'NU':       {qtd:2.0,     pm:8.51,   m:'USD', sym:'NU'},
-    'REGN':     {qtd:0.03929, pm:534.66, m:'USD', sym:'REGN'},
-    'TSM':      {qtd:0.03386, pm:295.25, m:'USD', sym:'TSM'},
-    'IAU':      {qtd:1.00191, pm:59.86,  m:'USD', sym:'IAU'},
-    'SPCX':     {qtd:0.22912, pm:174.57, m:'USD', sym:'SPCX'},
-    'WEGE3.SA': {qtd:20,      pm:40.34,  m:'BRL', sym:'WEGE3SA'},
-    'ITSA4.SA': {qtd:100,     pm:9.54,   m:'BRL', sym:'ITSA4SA'},
-    'TAEE11.SA':{qtd:10,      pm:35.89,  m:'BRL', sym:'TAEE11SA'},
-  };
-  Object.entries(rCart).forEach(([sym, info])=>{
-    const q = QT[sym]; if(!q) return;
+  const posicoes = getPosicaoCompleta();
+  const tbody = document.getElementById('ranking-tbody');
+  Object.entries(posicoes).forEach(([ticker, info])=>{
+    const symKey = info.mercado==='BR' ? ticker+'.SA' : ticker;
+    const q = QT[symKey] || QT[ticker]; if(!q) return;
     const p   = q.regularMarketPrice;
     const vp  = q.regularMarketChangePercent || 0;
     const pos = p * info.qtd;
     const cst = info.pm * info.qtd;
-    const pct = ((pos - cst) / cst) * 100;
-    const id  = info.sym;
+    const pct = cst>0 ? ((pos - cst) / cst) * 100 : 0;
+    const id  = ticker.replace('.SA','')+(info.mercado==='BR'?'SA':'');
 
-    const resEl = document.getElementById('rk-'+id+'-res');
+    let resEl = document.getElementById('rk-'+id+'-res');
+    let semEl = document.getElementById('rk-'+id+'-sem');
+
+    if(!resEl && tbody){
+      const tr=document.createElement('tr');
+      tr.dataset.ticker=ticker;
+      const numRows=tbody.querySelectorAll('tr').length+1;
+      tr.innerHTML='<td>'+numRows+'</td><td><strong>'+ticker+'</strong></td><td id="rk-'+id+'-res" class="pos"></td><td id="rk-'+id+'-sem" class="pos"></td><td>Lançado via Minhas Operações</td><td><span class="pill phold">—</span></td>';
+      tbody.appendChild(tr);
+      resEl=document.getElementById('rk-'+id+'-res');
+      semEl=document.getElementById('rk-'+id+'-sem');
+    }
+
     if(resEl){ resEl.textContent=(pct>=0?'+':'')+fn(pct)+'%'; resEl.className=pct>=0?'pos':'neg'; }
-
-    const semEl = document.getElementById('rk-'+id+'-sem');
     if(semEl){ semEl.textContent=(vp>=0?'+':'')+fn(vp)+'%'; semEl.className=vp>=0?'pos':'neg'; }
   });
 }
 
 function updateTabela(){
-  const tCart = {
-    'NVDA':     {qtd:0.49003, pm:103.21, m:'USD', sym:'NVDA'},
-    'AMZN':     {qtd:0.20138, pm:173.67, m:'USD', sym:'AMZN'},
-    'TSLA':     {qtd:0.18789, pm:279.46, m:'USD', sym:'TSLA'},
-    'LMT':      {qtd:0.03126, pm:479.75, m:'USD', sym:'LMT'},
-    'NU':       {qtd:2.0,     pm:8.51,   m:'USD', sym:'NU'},
-    'REGN':     {qtd:0.03929, pm:534.66, m:'USD', sym:'REGN'},
-    'TSM':      {qtd:0.03386, pm:295.25, m:'USD', sym:'TSM'},
-    'IAU':      {qtd:1.00191, pm:59.86,  m:'USD', sym:'IAU'},
-    'SPCX':     {qtd:0.22912, pm:174.57, m:'USD', sym:'SPCX'},
-    'WEGE3.SA': {qtd:20,      pm:40.34,  m:'BRL', sym:'WEGE3SA'},
-    'ITSA4.SA': {qtd:100,     pm:9.54,   m:'BRL', sym:'ITSA4SA'},
-    'TAEE11.SA':{qtd:10,      pm:35.89,  m:'BRL', sym:'TAEE11SA'},
-  };
-  Object.entries(tCart).forEach(([sym, info])=>{
-    const q = QT[sym]; if(!q) return;
+  const posicoes = getPosicaoCompleta();
+  const tbody = document.getElementById('tabela-consolidada');
+  Object.entries(posicoes).forEach(([ticker, info])=>{
+    const symKey = info.mercado==='BR' ? ticker+'.SA' : ticker;
+    const q = QT[symKey] || QT[ticker]; if(!q) return;
     const p   = q.regularMarketPrice;
     const vp  = q.regularMarketChangePercent || 0;
     const pos = p * info.qtd;
     const cst = info.pm * info.qtd;
     const res = pos - cst;
-    const pct = ((pos - cst) / cst) * 100;
-    const id  = info.sym;
+    const pct = cst>0 ? ((pos - cst) / cst) * 100 : 0;
+    const id  = ticker.replace('.SA','')+(info.mercado==='BR'?'SA':'');
+    const moedaUSD = info.mercado==='EUA';
 
-    const prEl = document.getElementById('t-'+id+'-pr');
-    if(prEl) prEl.textContent = info.m==='USD' ? fU(p) : fB(p);
+    let prEl = document.getElementById('t-'+id+'-pr');
+    if(!prEl && tbody){
+      const tr=document.createElement('tr');
+      tr.dataset.ticker=ticker;
+      tr.innerHTML='<td><strong>'+ticker+'</strong></td><td>'+info.mercado+'</td><td id="t-'+id+'-pr"></td><td id="t-'+id+'-vd"></td><td>'+(moedaUSD?'$':'R$')+cst.toFixed(2)+'</td><td id="t-'+id+'-pos"></td><td id="t-'+id+'-res"></td><td id="t-'+id+'-pct"></td>';
+      tbody.appendChild(tr);
+      prEl=document.getElementById('t-'+id+'-pr');
+    }
+    if(prEl) prEl.textContent = moedaUSD ? fU(p) : fB(p);
 
     const vdEl = document.getElementById('t-'+id+'-vd');
     if(vdEl){ vdEl.textContent=(vp>=0?'+':'')+fn(vp)+'%'; vdEl.className=vp>=0?'pos':'neg'; }
 
     const posEl = document.getElementById('t-'+id+'-pos');
-    if(posEl) posEl.textContent = info.m==='USD' ? fU(pos) : fB(pos);
+    if(posEl) posEl.textContent = moedaUSD ? fU(pos) : fB(pos);
 
     const resEl = document.getElementById('t-'+id+'-res');
-    if(resEl){ resEl.textContent=(res>=0?'+':'')+(info.m==='USD'?fU(res):fB(res)); resEl.className=res>=0?'pos':'neg'; }
+    if(resEl){ resEl.textContent=(res>=0?'+':'')+(moedaUSD?fU(res):fB(res)); resEl.className=res>=0?'pos':'neg'; }
 
     const pctEl = document.getElementById('t-'+id+'-pct');
     if(pctEl){ pctEl.textContent=(pct>=0?'+':'')+fn(pct)+'%'; pctEl.className=pct>=0?'pos':'neg'; }
