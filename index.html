@@ -365,7 +365,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Indicadores macro — última atualização 23/06/2026</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.392</div><div class="mac-s neg">-1,08% ter</div></div>
-    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.744</div><div class="mac-s neg">-1,61% ter</div></div>
+    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.298</div><div class="mac-s neg">-1,61% ter</div></div>
     <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">170.370</div><div class="mac-s pos">+0,03% ter</div></div>
     <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,170</div><div class="mac-s neu">Estável no dia</div></div>
     <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,25%</div><div class="mac-s neg">Em queda gradual</div></div>
@@ -407,7 +407,8 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Mercado EUA — 16/06/2026</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.392</div><div class="mac-s neg">-1,08% ter</div></div>
-    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.744</div><div class="mac-s neg">-1,61% ter</div></div>
+    <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.298</div><div class="mac-s neg">-1,61% ter</div></div>
+    <div class="mac"><div class="mac-l">Dow Jones</div><div class="mac-v">51.876</div><div class="mac-s pos">+0,07% ter</div></div>
     <div class="mac"><div class="mac-l">USD/BRL</div><div class="mac-v">R$ 5,170</div><div class="mac-s neu">Estável no dia</div></div>
     <div class="mac"><div class="mac-l">NVDA target</div><div class="mac-v">US$298</div><div class="mac-s pos">+46% upside</div></div>
     <div class="mac"><div class="mac-l">VIX</div><div class="mac-v">16,79</div><div class="mac-s neu">Medo baixo</div></div>
@@ -741,6 +742,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Macro Brasil</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">170.370</div><div class="mac-s pos">+0,03% ter</div></div>
+    <div class="mac"><div class="mac-l">VIX Ibovespa</div><div class="mac-v">22,50</div><div class="mac-s neu">Volatilidade</div></div>
     <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,170</div><div class="mac-s neu">Estável no dia</div></div>
     <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,25%</div><div class="mac-s neg">Em queda</div></div>
     <div class="mac"><div class="mac-l">IPCA 12m</div><div class="mac-v">4,39%</div><div class="mac-s neg">Meta: 3,0%</div></div>
@@ -2197,27 +2199,47 @@ async function fetchRT(){
 function updateIndices(idx){
   // Ibovespa
   setEl('idx-ibov-val',  fmtIdx(idx.ibovespa?.price || 170370));
+  setEl('idx-ibov-val2', fmtIdx(idx.ibovespa?.price || 170370));
   const ibovChg = idx.ibovespa?.change || 0;
   const elIbov = document.getElementById('idx-ibov-chg');
   if(elIbov){ elIbov.textContent = (ibovChg>=0?'+':'')+fn(ibovChg)+'%'; elIbov.className='mac-s '+(ibovChg>=0?'pos':'neg'); }
+  const elIbov2 = document.getElementById('idx-ibov-chg2');
+  if(elIbov2){ elIbov2.textContent = (ibovChg>=0?'+':'')+fn(ibovChg)+'%'; elIbov2.className='mac-s '+(ibovChg>=0?'pos':'neg'); }
 
   // S&P 500
-  setEl('idx-sp500-val', fmtIdx(idx.sp500?.price || 7392));
+  setEl('idx-sp500-val',  fmtIdx(idx.sp500?.price || 7392));
+  setEl('idx-sp500-val2', fmtIdx(idx.sp500?.price || 7392));
   const spChg = idx.sp500?.change || 0;
   const elSp = document.getElementById('idx-sp500-chg');
   if(elSp){ elSp.textContent = (spChg>=0?'+':'')+fn(spChg)+'%'; elSp.className='mac-s '+(spChg>=0?'pos':'neg'); }
+  const elSp2 = document.getElementById('idx-sp500-chg2');
+  if(elSp2){ elSp2.textContent = (spChg>=0?'+':'')+fn(spChg)+'%'; elSp2.className='mac-s '+(spChg>=0?'pos':'neg'); }
 
   // Nasdaq
-  setEl('idx-nasdaq-val', fmtIdx(idx.nasdaq?.price || 25744));
+  setEl('idx-nasdaq-val',  fmtIdx(idx.nasdaq?.price || 25298));
+  setEl('idx-nasdaq-val2', fmtIdx(idx.nasdaq?.price || 25298));
   const nqChg = idx.nasdaq?.change || 0;
   const elNq = document.getElementById('idx-nasdaq-chg');
   if(elNq){ elNq.textContent = (nqChg>=0?'+':'')+fn(nqChg)+'%'; elNq.className='mac-s '+(nqChg>=0?'pos':'neg'); }
+  const elNq2 = document.getElementById('idx-nasdaq-chg2');
+  if(elNq2){ elNq2.textContent = (nqChg>=0?'+':'')+fn(nqChg)+'%'; elNq2.className='mac-s '+(nqChg>=0?'pos':'neg'); }
 
   // Dow Jones
-  setEl('idx-dow-val', fmtIdx(idx.dowjones?.price || 51750));
+  setEl('idx-dow-val',  fmtIdx(idx.dowjones?.price || 51750));
+  setEl('idx-dow-val2', fmtIdx(idx.dowjones?.price || 51750));
   const djChg = idx.dowjones?.change || 0;
   const elDj = document.getElementById('idx-dow-chg');
   if(elDj){ elDj.textContent = (djChg>=0?'+':'')+fn(djChg)+'%'; elDj.className='mac-s '+(djChg>=0?'pos':'neg'); }
+  const elDj2 = document.getElementById('idx-dow-chg2');
+  if(elDj2){ elDj2.textContent = (djChg>=0?'+':'')+fn(djChg)+'%'; elDj2.className='mac-s '+(djChg>=0?'pos':'neg'); }
+
+  // VIX Ibovespa (volatilidade implícita do mercado BR)
+  if(idx.vxbr!=null && idx.vxbr.price!=null){
+    setEl('idx-vxbr-val', fn(idx.vxbr.price));
+    const vxChg = idx.vxbr.change || 0;
+    const elVx = document.getElementById('idx-vxbr-chg');
+    if(elVx){ elVx.textContent = (vxChg>=0?'+':'')+fn(vxChg)+'%'; elVx.className='mac-s '+(vxChg>=0?'neg':'pos'); } // VIX subindo = mais medo = "ruim"
+  }
 
   // Dólar
   setEl('idx-dolar-val', 'R$ '+(idx.dolar||rtDolar).toFixed(3));
@@ -2500,6 +2522,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const t=lbl.textContent.trim();
     if(t==='Ibovespa'){val.id='idx-ibov-val2';if(chg)chg.id='idx-ibov-chg2';}
     else if(t==='Dólar'){val.id='idx-dolar-val2';}
+    else if(t==='VIX Ibovespa'){val.id='idx-vxbr-val';if(chg)chg.id='idx-vxbr-chg';}
   });
   // IDs índices macro — aba EUA
   document.querySelectorAll('#p-eua .mac').forEach(mac=>{
@@ -2508,6 +2531,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     const t=lbl.textContent.trim();
     if(t==='S&P 500'){val.id='idx-sp500-val2';if(chg)chg.id='idx-sp500-chg2';}
     else if(t==='Nasdaq'){val.id='idx-nasdaq-val2';if(chg)chg.id='idx-nasdaq-chg2';}
+    else if(t==='Dow Jones'){val.id='idx-dow-val2';if(chg)chg.id='idx-dow-chg2';}
   });
 
   // Badge de status
