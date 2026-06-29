@@ -742,7 +742,6 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   <div class="sec">Macro Brasil</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">Ibovespa</div><div class="mac-v">170.370</div><div class="mac-s pos">+0,03% ter</div></div>
-    <div class="mac"><div class="mac-l">VIX Ibovespa</div><div class="mac-v">22,50</div><div class="mac-s neu">Volatilidade</div></div>
     <div class="mac"><div class="mac-l">Dólar</div><div class="mac-v">R$ 5,170</div><div class="mac-s neu">Estável no dia</div></div>
     <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,25%</div><div class="mac-s neg">Em queda</div></div>
     <div class="mac"><div class="mac-l">IPCA 12m</div><div class="mac-v">4,39%</div><div class="mac-s neg">Meta: 3,0%</div></div>
@@ -2233,14 +2232,6 @@ function updateIndices(idx){
   const elDj2 = document.getElementById('idx-dow-chg2');
   if(elDj2){ elDj2.textContent = (djChg>=0?'+':'')+fn(djChg)+'%'; elDj2.className='mac-s '+(djChg>=0?'pos':'neg'); }
 
-  // VIX Ibovespa (volatilidade implícita do mercado BR)
-  if(idx.vxbr!=null && idx.vxbr.price!=null){
-    setEl('idx-vxbr-val', fn(idx.vxbr.price));
-    const vxChg = idx.vxbr.change || 0;
-    const elVx = document.getElementById('idx-vxbr-chg');
-    if(elVx){ elVx.textContent = (vxChg>=0?'+':'')+fn(vxChg)+'%'; elVx.className='mac-s '+(vxChg>=0?'neg':'pos'); } // VIX subindo = mais medo = "ruim"
-  }
-
   // Dólar
   setEl('idx-dolar-val', 'R$ '+(idx.dolar||rtDolar).toFixed(3));
   setEl('idx-dolar-val2', 'R$ '+(idx.dolar||rtDolar).toFixed(3));
@@ -2522,7 +2513,6 @@ window.addEventListener('DOMContentLoaded',()=>{
     const t=lbl.textContent.trim();
     if(t==='Ibovespa'){val.id='idx-ibov-val2';if(chg)chg.id='idx-ibov-chg2';}
     else if(t==='Dólar'){val.id='idx-dolar-val2';}
-    else if(t==='VIX Ibovespa'){val.id='idx-vxbr-val';if(chg)chg.id='idx-vxbr-chg';}
   });
   // IDs índices macro — aba EUA
   document.querySelectorAll('#p-eua .mac').forEach(mac=>{
