@@ -1311,7 +1311,7 @@ function iniciarSyncFinancas(){
     window.fbOuvirMetasEconomia((dados)=>{
       metasEconomia = dados || {};
       metasEconomiaCarregadas = true;
-      renderMetaEconomia();
+      renderFinancas();
     });
   } else {
     setTimeout(iniciarSyncFinancas, 300);
@@ -2219,7 +2219,7 @@ function deletarLanc(id){
 }
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
-function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();renderMetaEconomia();}
+function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldoBruto=totRec-totPag;const metaDoMes=metasEconomiaCarregadas?(metasEconomia[chaveMetaAtual()]||0):0;const saldo=saldoBruto-metaDoMes;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');const sLabelEl=document.querySelector('#tot-saldo').closest('.rm')?.querySelector('.rm-l');if(sLabelEl) sLabelEl.textContent=metaDoMes>0?'Saldo após meta':'Saldo do mês';document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();renderMetaEconomia();}
 
 function chaveMetaAtual(){
   return anoAtual+'-'+String(mesAtual+1).padStart(2,'0');
@@ -2267,7 +2267,7 @@ function salvarMetaEconomia(){
   const chave=chaveMetaAtual();
   metasEconomia[chave]=valor;
   if(window.fbSalvarMetasEconomia) window.fbSalvarMetasEconomia(metasEconomia);
-  renderMetaEconomia();
+  renderFinancas();
 }
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="editarLanc('+l.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data','op-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
