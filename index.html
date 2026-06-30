@@ -254,6 +254,40 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     }, { onlyOnce: true });
   };
 
+  // Metas de economia mensal — uma por mês/ano, ex: "2026-07": 500
+  const metasEconomiaRef = ref(fbDB, 'metasEconomia');
+
+  window.fbSalvarMetasEconomia = function(obj){
+    set(metasEconomiaRef, obj).catch(e=>console.error('Erro ao salvar metas de economia:', e));
+  };
+
+  window.fbOuvirMetasEconomia = function(callback){
+    onValue(metasEconomiaRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(data || {});
+    }, (error) => {
+      console.error('Erro ao ler metas de economia:', error);
+      callback(null);
+    });
+  };
+
+  // Ativos favoritos — lista de tickers marcados com estrela na carteira
+  const ativosFavoritosRef = ref(fbDB, 'ativosFavoritos');
+
+  window.fbSalvarAtivosFavoritos = function(arr){
+    set(ativosFavoritosRef, arr).catch(e=>console.error('Erro ao salvar favoritos:', e));
+  };
+
+  window.fbOuvirAtivosFavoritos = function(callback){
+    onValue(ativosFavoritosRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(Array.isArray(data) ? data : (data ? Object.values(data) : []));
+    }, (error) => {
+      console.error('Erro ao ler favoritos:', error);
+      callback(null);
+    });
+  };
+
   const fbAuth = getAuth(fbApp);
 
   window.fbLogin = function(email, senha){
@@ -1033,6 +1067,28 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="rm"><div class="rm-l">Saldo do mês</div><div class="rm-v" id="tot-saldo">R$ 0</div></div>
     <div class="rm"><div class="rm-l">Pendentes</div><div class="rm-v neu" id="tot-pend">R$ 0</div></div>
   </div>
+
+  <div class="fin-form" style="margin-bottom:1.2rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+      <h3 style="margin:0">🎯 Meta de economia do mês</h3>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" id="meta-economia-input" placeholder="R$ 0,00" min="0" step="0.01" style="width:120px;padding:6px 8px;border:1px solid #ddd;border-radius:7px;font-size:12px">
+        <button onclick="salvarMetaEconomia()" style="font-size:11px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:6px 12px;cursor:pointer">Salvar</button>
+      </div>
+    </div>
+    <div id="meta-economia-sem-meta" style="font-size:12px;color:#888">Nenhuma meta definida para este mês. Defina um valor acima.</div>
+    <div id="meta-economia-progresso" style="display:none">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-bottom:5px">
+        <span>Economizado: <strong id="meta-economia-atual">R$ 0</strong></span>
+        <span>Meta: <strong id="meta-economia-valor">R$ 0</strong></span>
+      </div>
+      <div style="background:#f0f0ee;border-radius:20px;height:14px;overflow:hidden">
+        <div id="meta-economia-barra" style="height:100%;background:#27ae60;border-radius:20px;width:0%;transition:width .3s"></div>
+      </div>
+      <div id="meta-economia-msg" style="font-size:11px;color:#888;margin-top:6px"></div>
+    </div>
+  </div>
+
   <div class="fin-form" style="margin-bottom:1.2rem">
     <h3>📈 Evolução dos últimos 6 meses</h3>
     <div style="position:relative;height:180px">
@@ -1223,6 +1279,7 @@ const sb=document.getElementById('status-br');if(sb){sb.className='mkt-status '+
 checkMarkets();setInterval(checkMarkets,60000);
 const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let mesAtual=new Date().getMonth(),anoAtual=new Date().getFullYear(),filtroAtual='todos',lancamentos=[],modelosRecorrentes=[],fbSincronizado=false;
+let metasEconomia={}, metasEconomiaCarregadas=false;
 function salvar(){
   if(window.fbSalvarLancamentos) window.fbSalvarLancamentos(lancamentos);
 }
@@ -1232,7 +1289,7 @@ function salvarModelos(){
 let modelosCarregados = false;
 let recorrentesExcluidos = []; // lista de "modeloId|YYYY-MM" que o usuário excluiu de propósito
 function iniciarSyncFinancas(){
-  if(window.fbOuvirLancamentos && window.fbOuvirModelos){
+  if(window.fbOuvirLancamentos && window.fbOuvirModelos && window.fbOuvirMetasEconomia){
     window.fbOuvirLancamentos((dados)=>{
       if(dados!==null){
         lancamentos=dados;
@@ -1250,6 +1307,11 @@ function iniciarSyncFinancas(){
       modelosCarregados = true;
       gerarLancamentosRecorrentesDoMes();
       renderFinancas();
+    });
+    window.fbOuvirMetasEconomia((dados)=>{
+      metasEconomia = dados || {};
+      metasEconomiaCarregadas = true;
+      renderMetaEconomia();
     });
   } else {
     setTimeout(iniciarSyncFinancas, 300);
@@ -1300,6 +1362,7 @@ window.onFbAuthChange = function(user){
     if(content)  content.style.display='block';
     iniciarSyncFinancas();
     iniciarSyncOperacoes();
+    iniciarSyncFavoritos();
     if(typeof fetchRT==='function' && !window._rtIniciado){
       window._rtIniciado=true;
       fetchRT();
@@ -2156,7 +2219,56 @@ function deletarLanc(id){
 }
 function filtrar(f,el){filtroAtual=f;document.querySelectorAll('.lanc-filter').forEach(x=>x.classList.remove('on'));el.classList.add('on');renderLista();}
 function getLancMes(){return lancamentos.filter(l=>{const d=new Date(l.data+'T12:00:00');return d.getMonth()===mesAtual&&d.getFullYear()===anoAtual;});}
-function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();}
+function renderFinancas(){document.getElementById('mes-label').textContent=MESES[mesAtual]+' / '+anoAtual;const lancs=getLancMes();const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);const saldo=totRec-totPag;const pend=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado').reduce((s,l)=>s+l.val,0);document.getElementById('tot-rec').textContent=fmtBRLFin(totRec);document.getElementById('tot-pag').textContent=fmtBRLFin(totPag);const sEl=document.getElementById('tot-saldo');sEl.textContent=fmtBRLFin(Math.abs(saldo));sEl.className='rm-v '+(saldo>=0?'pos':'neg');document.getElementById('tot-pend').textContent=fmtBRLFin(pend);renderLista();renderGraficoEvolucao();renderResumoAnual();renderMetaEconomia();}
+
+function chaveMetaAtual(){
+  return anoAtual+'-'+String(mesAtual+1).padStart(2,'0');
+}
+function renderMetaEconomia(){
+  if(!metasEconomiaCarregadas) return;
+  const chave=chaveMetaAtual();
+  const meta=metasEconomia[chave];
+  const semMetaEl=document.getElementById('meta-economia-sem-meta');
+  const progEl=document.getElementById('meta-economia-progresso');
+  const inputEl=document.getElementById('meta-economia-input');
+  if(inputEl) inputEl.value=meta||'';
+
+  if(!meta || meta<=0){
+    if(semMetaEl) semMetaEl.style.display='block';
+    if(progEl) progEl.style.display='none';
+    return;
+  }
+  if(semMetaEl) semMetaEl.style.display='none';
+  if(progEl) progEl.style.display='block';
+
+  const lancs=getLancMes();
+  const totRec=lancs.filter(l=>l.tipo==='rec').reduce((s,l)=>s+l.val,0);
+  const totPag=lancs.filter(l=>l.tipo==='pag').reduce((s,l)=>s+l.val,0);
+  const economizado=totRec-totPag;
+  const pct=Math.max(0,Math.min(100,(economizado/meta)*100));
+
+  document.getElementById('meta-economia-atual').textContent=fmtBRLFin(economizado);
+  document.getElementById('meta-economia-valor').textContent=fmtBRLFin(meta);
+  const barraEl=document.getElementById('meta-economia-barra');
+  if(barraEl){
+    barraEl.style.width=pct+'%';
+    barraEl.style.background=economizado>=meta?'#27ae60':(economizado>=0?'#534AB7':'#e74c3c');
+  }
+  const msgEl=document.getElementById('meta-economia-msg');
+  if(msgEl){
+    if(economizado>=meta) msgEl.textContent='🎉 Meta atingida! Você economizou '+fmtBRLFin(economizado-meta)+' a mais.';
+    else if(economizado>=0) msgEl.textContent='Faltam '+fmtBRLFin(meta-economizado)+' para atingir a meta ('+pct.toFixed(0)+'%).';
+    else msgEl.textContent='⚠️ Você está no negativo este mês — despesas maiores que receitas.';
+  }
+}
+function salvarMetaEconomia(){
+  const valor=parseFloat(document.getElementById('meta-economia-input').value);
+  if(!valor || valor<=0){ alert('Informe um valor de meta válido.'); return; }
+  const chave=chaveMetaAtual();
+  metasEconomia[chave]=valor;
+  if(window.fbSalvarMetasEconomia) window.fbSalvarMetasEconomia(metasEconomia);
+  renderMetaEconomia();
+}
 function renderLista(){const lista=document.getElementById('lista-lanc');let lancs=getLancMes();if(filtroAtual==='rec')lancs=lancs.filter(l=>l.tipo==='rec');else if(filtroAtual==='pag')lancs=lancs.filter(l=>l.tipo==='pag');else if(filtroAtual==='pendente')lancs=lancs.filter(l=>l.status==='pendente'||l.status==='atrasado');lancs.sort((a,b)=>new Date(b.data)-new Date(a.data));if(!lancs.length){lista.innerHTML='<div class="empty-state">Nenhum lançamento para este filtro.</div>';return;}const stMap={recebido:'<span class="lanc-status st-pago">Recebido</span>',pago:'<span class="lanc-status st-pago">Pago</span>',pendente:'<span class="lanc-status st-pend">Pendente</span>',atrasado:'<span class="lanc-status st-atrs">Atrasado</span>'};lista.innerHTML=lancs.map(l=>{const d=new Date(l.data+'T12:00:00');const ds=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const icon=l.tipo==='rec'?'💚':'❤️';const ic=l.tipo==='rec'?'icon-rec':'icon-pag';const vc=l.tipo==='rec'?'pos':'neg';const sn=l.tipo==='rec'?'+':'-';return '<div class="lanc-item"><div class="lanc-left"><div class="lanc-icon '+ic+'">'+icon+'</div><div><div class="lanc-desc">'+l.desc+(l.recId?' <span title="Lançamento recorrente" style="font-size:11px">🔁</span>':'')+'</div><div class="lanc-cat">'+(l.cat||'Sem categoria')+'</div></div></div><div class="lanc-right"><div class="lanc-date">'+ds+'</div>'+(stMap[l.status]||'')+'<div class="lanc-val '+vc+'">'+sn+fmtBRLFin(l.val)+'</div><button class="btn-del" onclick="editarLanc('+l.id+')" title="Editar" style="color:#888">✏️</button><button class="btn-del" onclick="deletarLanc('+l.id+')" title="Remover">✕</button></div></div>';}).join('');}
 window.addEventListener('DOMContentLoaded',()=>{const hoje=new Date().toISOString().split('T')[0];['rec-data','pag-data','op-data'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=hoje;});renderFinancas();});
 
@@ -2300,9 +2412,10 @@ function renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao)
     card = document.createElement('div');
     card.className='ativo';
     card.dataset.ticker=ticker;
+    card.dataset.favTicker=ticker;
     card.innerHTML =
       '<div class="ah" onclick="this.parentElement.querySelector(\'.det\').classList.toggle(\'op\');this.querySelector(\'.chev\').style.transform=this.parentElement.querySelector(\'.det\').classList.contains(\'op\')?\'rotate(180deg)\':\'\'">'+
-        '<div class="aleft"><div class="tb">'+ticker+'</div><div><div class="an">'+ticker+'</div><div class="as">Lançado via Minhas Operações</div></div></div>'+
+        '<div class="aleft"><span class="fav-star" style="cursor:pointer;font-size:15px;margin-right:4px;flex-shrink:0" onclick="toggleFavorito(\''+ticker+'\', event)">☆</span><div class="tb">'+ticker+'</div><div><div class="an">'+ticker+'</div><div class="as">Lançado via Minhas Operações</div></div></div>'+
         '<div class="aright">'+
           '<div><div class="pr"></div><div class="pm"></div></div>'+
           '<span class="vb"></span>'+
@@ -2325,6 +2438,8 @@ function renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao)
       '</div>';
     container.appendChild(card);
   }
+  const starEl=card.querySelector('.fav-star');
+  if(starEl) starEl.textContent = ativosFavoritos.includes(ticker) ? '⭐' : '☆';
   const prEl=card.querySelector('.pr');
   if(prEl) prEl.textContent=(info.mercado==='EUA'?fU(p):fB(p))+(temCotacao?'':' (PM — sem cotação ao vivo)');
   const pmHeadEl=card.querySelector('.pm');
@@ -2466,6 +2581,38 @@ function renderAlocacao(){
   }
 }
 
+let ativosFavoritos=[], favoritosCarregados=false;
+function iniciarSyncFavoritos(){
+  if(window.fbOuvirAtivosFavoritos){
+    window.fbOuvirAtivosFavoritos((dados)=>{
+      ativosFavoritos = dados || [];
+      favoritosCarregados = true;
+      if(Object.keys(QT).length>0) renderRT();
+    });
+  } else {
+    setTimeout(iniciarSyncFavoritos, 300);
+  }
+}
+function toggleFavorito(ticker, event){
+  if(event){ event.stopPropagation(); }
+  const idx=ativosFavoritos.indexOf(ticker);
+  if(idx>-1) ativosFavoritos.splice(idx,1);
+  else ativosFavoritos.push(ticker);
+  if(window.fbSalvarAtivosFavoritos) window.fbSalvarAtivosFavoritos(ativosFavoritos);
+  renderRT();
+}
+function reordenarFavoritos(containerSelector){
+  const container=document.querySelector(containerSelector);
+  if(!container) return;
+  const cards=Array.from(container.querySelectorAll(':scope > .ativo'));
+  cards.sort((a,b)=>{
+    const favA=ativosFavoritos.includes(a.dataset.favTicker)?1:0;
+    const favB=ativosFavoritos.includes(b.dataset.favTicker)?1:0;
+    return favB-favA;
+  });
+  cards.forEach(c=>container.appendChild(c));
+}
+
 function renderRT(){
   let totEUA_pos=0, totEUA_cst=0, totBR_pos=0, totBR_cst=0;
   const posicoes = getPosicaoCompleta();
@@ -2488,6 +2635,17 @@ function renderRT(){
       idsVistos[info.mercado].push(idDom);
       const ativo = document.querySelector('[id="c-'+idDom+'"]')?.closest('.ativo');
       if(ativo){
+        ativo.dataset.favTicker = ticker;
+        const ahEl = ativo.querySelector('.ah');
+        if(ahEl && !ahEl.querySelector('.fav-star')){
+          const star=document.createElement('span');
+          star.className='fav-star';
+          star.style.cssText='cursor:pointer;font-size:15px;margin-right:4px;flex-shrink:0';
+          star.onclick=(e)=>toggleFavorito(ticker, e);
+          ahEl.querySelector('.aleft').prepend(star);
+        }
+        const starEl = ahEl?.querySelector('.fav-star');
+        if(starEl) starEl.textContent = ativosFavoritos.includes(ticker) ? '⭐' : '☆';
         const prEl = ativo.querySelector('.pr');
         if(prEl) prEl.textContent = (moedaUSD ? fU(p) : fB(p)) + (temCotacao?'':' (PM)');
         const pmEl = ativo.querySelector('.pm');
@@ -2560,6 +2718,13 @@ function renderRT(){
   updateRanking();
   renderAlocacao();
   if(!graficoEvolucaoPatrimonio) renderGraficoPatrimonio();
+
+  if(favoritosCarregados){
+    reordenarFavoritos('#p-eua');
+    reordenarFavoritos('#cards-eua-dinamicos');
+    reordenarFavoritos('#p-br');
+    reordenarFavoritos('#cards-br-dinamicos');
+  }
 }
 
 function updateRanking(){
