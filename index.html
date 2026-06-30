@@ -244,6 +244,16 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     });
   };
 
+  // Leitura única (não-listener) do histórico de snapshots diários da carteira,
+  // salvos automaticamente pelo Cron do Worker. Usado no gráfico de evolução do patrimônio.
+  window.fbBuscarSnapshotsCarteira = function(callback){
+    const snapRef = ref(fbDB, 'snapshots_carteira');
+    onValue(snapRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(data || {});
+    }, { onlyOnce: true });
+  };
+
   const fbAuth = getAuth(fbApp);
 
   window.fbLogin = function(email, senha){
@@ -371,6 +381,36 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="mac"><div class="mac-l">Selic</div><div class="mac-v">14,25%</div><div class="mac-s neg">Em queda gradual</div></div>
     <div class="mac"><div class="mac-l">IPCA 2026E</div><div class="mac-v">5,33%</div><div class="mac-s neg">Acima do teto</div></div>
     <div class="mac"><div class="mac-l">IAU/Ouro</div><div class="mac-v">US$ 81,52</div><div class="mac-s pos">+36,2% vs PM</div></div>
+  </div>
+
+  <div class="ativo" style="margin-bottom:1.2rem">
+    <div style="padding:14px">
+      <div class="ds" style="margin-bottom:10px">Evolução do patrimônio</div>
+      <div style="position:relative;height:220px">
+        <canvas id="grafico-evolucao-patrimonio"></canvas>
+      </div>
+      <div id="evolucao-patrimonio-msg" style="font-size:11px;color:#aaa;text-align:center;margin-top:8px;display:none">Ainda não há histórico suficiente — o snapshot diário começou a ser salvo recentemente. Volte em alguns dias para ver a evolução.</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.2rem" id="alocacao-grid">
+    <div class="ativo">
+      <div style="padding:14px">
+        <div class="ds" style="margin-bottom:10px">Alocação por ativo</div>
+        <div style="position:relative;height:240px">
+          <canvas id="grafico-alocacao"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="ativo">
+      <div style="padding:14px">
+        <div class="ds" style="margin-bottom:10px">% da carteira</div>
+        <table class="tbl" id="tabela-alocacao">
+          <thead><tr><th>Ativo</th><th>Posição</th><th>%</th></tr></thead>
+          <tbody id="tabela-alocacao-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="ativo">
@@ -889,7 +929,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div style="padding:12px 14px">
       <div class="ds" style="margin-bottom:10px">Ranking B&H — qualidade e perspectiva (09/06/2026)</div>
       <table class="tbl">
-        <thead><tr><th>#</th><th>Ativo</th><th>Resultado</th><th>Semana</th><th>Perspectiva</th><th>Ação</th></tr></thead>
+        <thead><tr><th>#</th><th>Ativo</th><th>Resultado</th><th>Var. dia</th><th>Perspectiva</th><th>Ação</th></tr></thead>
         <tbody id="ranking-tbody">
           <tr><td>1</td><td><strong>NVDA</strong></td><td id="rk-NVDA-res" class="pos">+103,2%</td><td id="rk-NVDA-sem" class="neg">-1,3%</td><td>Strong Buy · Revenue +65% · target +46%</td><td><span class="pill pbuy">Manter</span></td></tr>
           <tr><td>2</td><td><strong>IAU</strong></td><td id="rk-IAU-res" class="pos">+36,2%</td><td id="rk-IAU-sem" class="pos">+0,3%</td><td>Único ativo positivo na sex · hedge ideal</td><td><span class="pill pbuy">Manter / Aportar</span></td></tr>
@@ -2302,6 +2342,130 @@ function renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao)
   card.querySelector('.vv-vardia').textContent=(vp>=0?'+':'')+fn(vp)+'%';
 }
 
+let graficoEvolucaoPatrimonio=null;
+function renderGraficoPatrimonio(){
+  const canvas=document.getElementById('grafico-evolucao-patrimonio');
+  if(!canvas || typeof Chart==='undefined' || !window.fbBuscarSnapshotsCarteira) return;
+  window.fbBuscarSnapshotsCarteira((snapshots)=>{
+    const datas=Object.keys(snapshots).sort();
+    const msgEl=document.getElementById('evolucao-patrimonio-msg');
+    if(datas.length<2){
+      if(msgEl) msgEl.style.display='block';
+      canvas.style.display='none';
+      return;
+    }
+    if(msgEl) msgEl.style.display='none';
+    canvas.style.display='block';
+
+    const labels=[], valores=[];
+    datas.forEach(data=>{
+      const snap=snapshots[data];
+      if(!snap || !snap.carteira) return;
+      // Recalcula o patrimônio histórico usando a QUANTIDADE ATUAL de cada ativo
+      // (limitação: não reflete mudanças de quantidade ao longo do tempo, é uma aproximação
+      // usando os preços históricos do snapshot × posição de hoje)
+      const posicoes=getPosicaoCompleta();
+      let totalEUA=0, totalBR=0;
+      Object.entries(posicoes).forEach(([ticker, info])=>{
+        const precoHist=snap.carteira[ticker];
+        if(precoHist==null) return;
+        const valor=precoHist*info.qtd;
+        if(info.mercado==='EUA') totalEUA+=valor;
+        else totalBR+=valor;
+      });
+      const dolarHist=snap.dolar || rtDolar;
+      const patrimonioHist=(totalEUA*dolarHist)+totalBR;
+      if(patrimonioHist>0){
+        const d=new Date(data+'T12:00:00');
+        labels.push(d.getDate()+'/'+(d.getMonth()+1));
+        valores.push(patrimonioHist);
+      }
+    });
+
+    if(valores.length<2){
+      if(msgEl){ msgEl.style.display='block'; msgEl.textContent='Histórico ainda insuficiente para o gráfico (os snapshots não cobrem todos os ativos atuais).'; }
+      canvas.style.display='none';
+      return;
+    }
+
+    if(graficoEvolucaoPatrimonio){
+      graficoEvolucaoPatrimonio.data.labels=labels;
+      graficoEvolucaoPatrimonio.data.datasets[0].data=valores;
+      graficoEvolucaoPatrimonio.update();
+    } else {
+      graficoEvolucaoPatrimonio=new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{labels,datasets:[{
+          label:'Patrimônio (R$)',data:valores,
+          borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.10)',
+          tension:.3,fill:true,pointRadius:3,pointBackgroundColor:'#534AB7'
+        }]},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{y:{ticks:{callback:v=>fB(v)}}}
+        }
+      });
+    }
+  });
+}
+
+let graficoAlocacao=null;
+function renderAlocacao(){
+  const canvas=document.getElementById('grafico-alocacao');
+  const tbody=document.getElementById('tabela-alocacao-body');
+  if(!canvas) return;
+  const posicoes=getPosicaoCompleta();
+  const itens=[];
+  let totalGeralBRL=0;
+
+  Object.entries(posicoes).forEach(([ticker, info])=>{
+    const symKey = info.mercado==='BR' ? ticker+'.SA' : ticker;
+    const q = QT[symKey] || QT[ticker];
+    const p = q ? q.regularMarketPrice : info.pm;
+    const posValor = p*info.qtd;
+    const posBRL = info.mercado==='EUA' ? posValor*rtDolar : posValor;
+    itens.push({ticker, mercado:info.mercado, posValor, posBRL});
+    totalGeralBRL+=posBRL;
+  });
+
+  itens.sort((a,b)=>b.posBRL-a.posBRL);
+
+  const labels=itens.map(i=>i.ticker);
+  const valores=itens.map(i=>i.posBRL);
+
+  if(tbody){
+    if(!itens.length){
+      tbody.innerHTML='<tr><td colspan="3" style="text-align:center;color:#aaa;padding:1rem">Nenhuma posição na carteira.</td></tr>';
+    } else {
+      tbody.innerHTML=itens.map(i=>{
+        const pct=totalGeralBRL>0?(i.posBRL/totalGeralBRL*100):0;
+        const moeda=i.mercado==='EUA'?'US$':'R$';
+        return '<tr><td><strong>'+i.ticker+'</strong> <span style="color:#aaa;font-size:10px">'+i.mercado+'</span></td><td>'+moeda+' '+i.posValor.toFixed(2)+'</td><td>'+pct.toFixed(1)+'%</td></tr>';
+      }).join('');
+    }
+  }
+
+  if(typeof Chart!=='undefined'){
+    if(graficoAlocacao){
+      graficoAlocacao.data.labels=labels;
+      graficoAlocacao.data.datasets[0].data=valores;
+      graficoAlocacao.update();
+    } else {
+      graficoAlocacao=new Chart(canvas.getContext('2d'),{
+        type:'pie',
+        data:{labels,datasets:[{data:valores,backgroundColor:CORES_CAT}]},
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}}
+        }
+      });
+    }
+  }
+}
+
 function renderRT(){
   let totEUA_pos=0, totEUA_cst=0, totBR_pos=0, totBR_cst=0;
   const posicoes = getPosicaoCompleta();
@@ -2394,6 +2558,8 @@ function renderRT(){
   // Atualizar tabela consolidada
   updateTabela();
   updateRanking();
+  renderAlocacao();
+  if(!graficoEvolucaoPatrimonio) renderGraficoPatrimonio();
 }
 
 function updateRanking(){
