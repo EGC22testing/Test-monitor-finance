@@ -1273,24 +1273,62 @@ window.addEventListener('DOMContentLoaded',()=>{
 let vH=false;
 function toggleValues(){
   vH=!vH;
+  aplicarMascaraFinancas();
+  aplicarMascaraConsolidado();
   const label=document.getElementById('hide-label');
   const eye=document.getElementById('eye-txt');
+  label.textContent=vH?'Mostrar valores':'Ocultar valores';
+  eye.textContent=vH?'🙈':'👁';
+}
+
+function aplicarMascaraConsolidado(){
+  // Cards e valores padrão (investimentos)
   document.querySelectorAll('.mc-v,.mc-s,.res,.pr,.pm,.vv,.mac-v,.mac-s,.rm-v,.lanc-val').forEach(el=>el.classList.toggle('hidden-val',vH));
-  // Tabela "Todos os ativos" — oculta todas as colunas exceto Ativo (1ª) e Mercado (2ª)
+  // Tabela "Todos os ativos"
   document.querySelectorAll('#tabela-consolidada tr').forEach(tr=>{
     tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=2) td.classList.toggle('hidden-val',vH); });
   });
-  // Tabela de alocação por ativo — oculta Posição e %
+  // Tabela alocação por ativo
   document.querySelectorAll('#tabela-alocacao-body tr').forEach(tr=>{
     tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=1) td.classList.toggle('hidden-val',vH); });
   });
-  // Gráficos com valores monetários (evolução do patrimônio e alocação por ativo)
+  // Gráficos de investimento
   ['grafico-evolucao-patrimonio','grafico-alocacao'].forEach(id=>{
     const canvas=document.getElementById(id);
     if(canvas) canvas.style.filter = vH ? 'blur(8px)' : '';
   });
-  label.textContent=vH?'Mostrar valores':'Ocultar valores';
-  eye.textContent=vH?'🙈':'👁';
+}
+
+function aplicarMascaraFinancas(){
+  // Cards principais de receita/despesa/saldo
+  document.querySelectorAll('#tot-rec,#tot-pag,#tot-saldo,#tot-pend').forEach(el=>el.classList.toggle('hidden-val',vH));
+  // Lançamentos
+  document.querySelectorAll('.lanc-val').forEach(el=>el.classList.toggle('hidden-val',vH));
+  // Cards de totais anuais
+  document.querySelectorAll('#ano-tot-rec,#ano-tot-pag,#ano-tot-saldo').forEach(el=>el.classList.toggle('hidden-val',vH));
+  // Resumo anual — Despesas por categoria
+  document.querySelectorAll('#tabela-categorias-body tr').forEach(tr=>{
+    tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=1) td.classList.toggle('hidden-val',vH); });
+  });
+  // Resumo anual — Receitas por fonte
+  document.querySelectorAll('#tabela-fontes-receita-body tr').forEach(tr=>{
+    tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=1) td.classList.toggle('hidden-val',vH); });
+  });
+  // Comparativo mensal — totais + tabela
+  document.querySelectorAll('#cmp-mes-totais .rm-v,#cmp-mes-totais .rm-s').forEach(el=>el.classList.toggle('hidden-val',vH));
+  document.querySelectorAll('#tabela-cmp-mes-body tr').forEach(tr=>{
+    tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=1) td.classList.toggle('hidden-val',vH); });
+  });
+  // Comparativo anual — totais + tabela
+  document.querySelectorAll('#cmp-ano-totais .rm-v,#cmp-ano-totais .rm-s').forEach(el=>el.classList.toggle('hidden-val',vH));
+  document.querySelectorAll('#tabela-cmp-ano-body tr').forEach(tr=>{
+    tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=1) td.classList.toggle('hidden-val',vH); });
+  });
+  // Gráficos de finanças
+  ['grafico-categorias','grafico-fontes-receita','grafico-evolucao-receita','grafico-evolucao'].forEach(id=>{
+    const canvas=document.getElementById(id);
+    if(canvas) canvas.style.filter = vH ? 'blur(8px)' : '';
+  });
 }
 function checkMarkets(){const now=new Date();const nyNow=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));const nyDay=nyNow.getDay();const nyT=nyNow.getHours()*60+nyNow.getMinutes();let eS,eC,eD,eDt;if(nyDay===0||nyDay===6){eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Fim de semana — abre segunda 09:30 ET';}else if(nyT>=570&&nyT<960){eS='🟢 NYSE/NASDAQ aberto';eC='mkt-open';eD='dot-open';const c=960-nyT;eDt='Fecha em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=240&&nyT<570){eS='🟡 Pré-mercado EUA';eC='mkt-pre';eD='dot-pre';const c=570-nyT;eDt='Abre em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(nyT>=960&&nyT<1200){eS='🟡 Pós-mercado EUA';eC='mkt-pre';eD='dot-pre';eDt='After hours até 20:00 ET';}else{eS='🔴 NYSE/NASDAQ fechado';eC='mkt-closed';eD='dot-closed';eDt='Abre às 09:30 ET';}
 const brNow=new Date(now.toLocaleString('en-US',{timeZone:'America/Sao_Paulo'}));const brDay=brNow.getDay();const brT=brNow.getHours()*60+brNow.getMinutes();let bS,bC,bD,bDt;if(brDay===0||brDay===6){bS='🔴 B3 fechada';bC='mkt-closed';bD='dot-closed';bDt='Fim de semana — abre segunda 10:00 BRT';}else if(brT>=600&&brT<1075){bS='🟢 B3 aberta';bC='mkt-open';bD='dot-open';const c=1075-brT;bDt='Fecha em '+Math.floor(c/60)+'h'+(c%60>0?c%60+'min':'');}else if(brT>=570&&brT<600){bS='🟡 Pré-abertura B3';bC='mkt-pre';bD='dot-pre';bDt='Abre às 10:00 BRT';}else{bS='🔴 B3 fechada';bC='mkt-closed';bD='dot-closed';bDt='Abre às 10:00 BRT';}
@@ -1666,6 +1704,7 @@ function renderResumoAnual(){
 
   renderComparativoMes();
   renderComparativoAno();
+  if(vH) aplicarMascaraFinancas();
 }
 
 function setCompMes(modo){
@@ -1739,6 +1778,7 @@ function renderComparativoMes(){
       tbody.innerHTML=todasCats.map(c=>linhaVariacao(c,catAtual[c]||0,catComp[c]||0)).join('');
     }
   }
+  if(vH) aplicarMascaraFinancas();
 }
 
 function renderComparativoAno(){
@@ -1782,6 +1822,20 @@ function renderComparativoAno(){
       tbody.innerHTML=todasCats.map(c=>linhaVariacao(c,catAtual[c]||0,catComp[c]||0)).join('');
     }
   }
+  if(vH) aplicarMascaraFinancas();
+}
+
+function aplicarMascaraFinancas(){
+  if(!vH) return;
+  [['#tabela-categorias-body',1],['#tabela-fontes-receita-body',1],['#tabela-cmp-mes-body',1],['#tabela-cmp-ano-body',1]].forEach(([sel,skip])=>{
+    document.querySelectorAll(sel+' tr').forEach(tr=>{
+      tr.querySelectorAll('td').forEach((td,i)=>{ if(i>=skip) td.classList.add('hidden-val'); });
+    });
+  });
+  document.querySelectorAll('#cmp-mes-totais .rm-v,#cmp-ano-totais .rm-v,#ano-tot-rec,#ano-tot-pag,#ano-tot-saldo').forEach(el=>el.classList.add('hidden-val'));
+  ['grafico-categorias','grafico-fontes-receita','grafico-evolucao-receita'].forEach(id=>{
+    const c=document.getElementById(id); if(c) c.style.filter='blur(8px)';
+  });
 }
 
 // ══════════════ MINHAS OPERAÇÕES (carteira dinâmica) ══════════════
