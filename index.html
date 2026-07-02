@@ -126,6 +126,16 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 .lanc-filter{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1px solid #ddd;background:#fff;color:#666}
 .lanc-filter.on{background:#534AB7;color:#fff;border-color:#534AB7}
 .lanc-item{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #f3f3f0;gap:7px;flex-wrap:wrap}
+.news-card{background:#fff;border:1px solid #eee;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s}
+.news-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.news-card-header{display:flex;align-items:flex-start;gap:10px;justify-content:space-between}
+.news-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.news-badge-mercado{background:#e6f1fb;color:#0c447c}
+.news-badge-eua{background:#eaf3de;color:#27500a}
+.news-badge-br{background:#faeeda;color:#633806}
+.news-titulo{font-size:12px;font-weight:600;line-height:1.4;color:#333;flex:1}
+.news-meta{font-size:10px;color:#aaa;margin-top:5px}
+.news-ativo{font-size:10px;font-weight:700;color:#534AB7;margin-right:6px}
 .lanc-item:last-child{border:none}
 .lanc-item:hover{background:#fafafa}
 .lanc-left{display:flex;align-items:center;gap:8px}
@@ -372,6 +382,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
       </div>
     </div>
 
+    <div class="side-single" data-panel="noticias" onclick="st('noticias',this)">📰 Notícias</div>
     <div class="side-single" data-panel="financas" onclick="st('financas',this)">💰 Finanças Pessoais</div>
   </div>
 
@@ -1047,6 +1058,26 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 </div>
 
+<!-- ═══════════════ NOTÍCIAS ═══════════════ -->
+<div id="p-noticias" class="panel">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+    <div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:2px">📰 Notícias do Mercado</div>
+      <div style="font-size:11px;color:#888" id="noticias-updated">Carregando...</div>
+    </div>
+    <button onclick="fetchNoticias()" style="font-size:11px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:5px 13px;cursor:pointer">🔄 Atualizar</button>
+  </div>
+  <div class="lanc-filters" style="margin-bottom:1rem" id="noticias-filtros">
+    <div class="lanc-filter on" onclick="filtrarNoticias('todos',this)">Todas</div>
+    <div class="lanc-filter" onclick="filtrarNoticias('mercado',this)">🌎 Mercado</div>
+    <div class="lanc-filter" onclick="filtrarNoticias('eua',this)">🇺🇸 EUA</div>
+    <div class="lanc-filter" onclick="filtrarNoticias('br',this)">🇧🇷 Brasil</div>
+  </div>
+  <div id="lista-noticias">
+    <div class="empty-state">Clique em Atualizar para carregar as notícias.</div>
+  </div>
+</div>
+
 <!-- ═══════════════ FINANÇAS PESSOAIS ═══════════════ -->
 <div id="p-financas" class="panel">
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
@@ -1238,6 +1269,7 @@ function st(id,el){
   document.getElementById('p-'+id).classList.add('on');
   if(el) el.classList.add('on');
   toggleSidebar(false);
+  if(id==='noticias' && todasNoticias.length===0) fetchNoticias();
 }
 function toggleGrupoSidebar(nome){
   const h=document.getElementById('grupo-'+nome+'-h');
@@ -2406,6 +2438,7 @@ async function fetchRT(){
 
     // Atualizar índices macro
     if(json.indices) updateIndices(json.indices);
+    if(json.bcb) updateBCB(json.bcb);
 
     renderRT();
     startCountdown();
@@ -2458,9 +2491,40 @@ function updateIndices(idx){
   const elDj2 = document.getElementById('idx-dow-chg2');
   if(elDj2){ elDj2.textContent = (djChg>=0?'+':'')+fn(djChg)+'%'; elDj2.className='mac-s '+(djChg>=0?'pos':'neg'); }
 
-  // Dólar
-  setEl('idx-dolar-val', 'R$ '+(idx.dolar||rtDolar).toFixed(3));
-  setEl('idx-dolar-val2', 'R$ '+(idx.dolar||rtDolar).toFixed(3));
+  // Dólar — atualiza nas 3 abas (Consolidado, BR, EUA) com variação real
+  const dolarVal = 'R$ '+(idx.dolar||rtDolar).toFixed(3);
+  setEl('idx-dolar-val',  dolarVal);
+  setEl('idx-dolar-val2', dolarVal);
+  setEl('idx-dolar-val3', dolarVal);
+  // Variação do dólar no dia (via BRL=X no QT, se disponível)
+  const dolarQ = QT['BRL=X'];
+  const dolarChg = dolarQ?.regularMarketChangePercent || 0;
+  ['idx-dolar-chg','idx-dolar-chg2','idx-dolar-chg3'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.textContent=(dolarChg>=0?'+':'')+fn(dolarChg)+'%'; el.className='mac-s '+(dolarChg>=0?'neg':'pos'); } // dolar subindo = BRL caindo = ruim
+  });
+}
+
+function updateBCB(bcb){
+  if(!bcb) return;
+  // Selic
+  if(bcb.selic!=null){
+    const sv=bcb.selic.toFixed(2)+'%';
+    setEl('idx-selic-val',  sv);
+    setEl('idx-selic-val2', sv);
+  }
+  // IPCA 12m
+  if(bcb.ipca12m!=null){
+    const iv=bcb.ipca12m.toFixed(2)+'%';
+    setEl('idx-ipca12m-val2', iv);
+  }
+  // IPCA 2026E — projeção Focus do BCB (série 11427)
+  // Por ora mantemos o valor estático — não vem no endpoint atual do Worker
+  // CDI
+  if(bcb.cdi!=null){
+    const cv='~'+bcb.cdi.toFixed(2)+'%';
+    setEl('idx-cdi-val2', cv);
+  }
 }
 
 function startCountdown(){
@@ -2790,9 +2854,13 @@ function renderRT(){
   setEl('rt-cons-eua', fU(totEUA_pos));
   setEl('rt-cons-br',  fB(totBR_pos));
 
-  // Atualizar dólar nos cards de macro
+  // Atualizar dólar nos cards de macro (todas as abas)
   setEl('idx-dolar-val',  'R$ '+rtDolar.toFixed(3));
   setEl('idx-dolar-val2', 'R$ '+rtDolar.toFixed(3));
+  setEl('idx-dolar-val3', 'R$ '+rtDolar.toFixed(3));
+  // IAU/Ouro no Consolidado
+  const qIAU=QT['IAU'];
+  if(qIAU) setEl('idx-iau-val','US$ '+fn(qIAU.regularMarketPrice,2));
 
   // Atualizar tabela consolidada
   updateTabela();
@@ -2929,7 +2997,20 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(!lbl||!val) return;
     const t=lbl.textContent.trim();
     if(t==='Ibovespa'){val.id='idx-ibov-val2';if(chg)chg.id='idx-ibov-chg2';}
-    else if(t==='Dólar'){val.id='idx-dolar-val2';}
+    else if(t==='Dólar'){val.id='idx-dolar-val2';if(chg)chg.id='idx-dolar-chg2';}
+    else if(t==='Selic'){val.id='idx-selic-val2';}
+    else if(t==='IPCA 12m'){val.id='idx-ipca12m-val2';}
+    else if(t==='IPCA 2026E'){val.id='idx-ipca2026-val2';}
+    else if(t==='CDI'){val.id='idx-cdi-val2';}
+  });
+  // IDs índices macro — Consolidado (BCB)
+  document.querySelectorAll('#p-consolidado .mac').forEach(mac=>{
+    const lbl=mac.querySelector('.mac-l'), val=mac.querySelector('.mac-v'), chg=mac.querySelector('.mac-s');
+    if(!lbl||!val) return;
+    const t=lbl.textContent.trim();
+    if(t==='Selic'){val.id='idx-selic-val';}
+    else if(t==='IPCA 2026E'){val.id='idx-ipca2026-val';}
+    else if(t==='IAU/Ouro'){val.id='idx-iau-val';}
   });
   // IDs índices macro — aba EUA
   document.querySelectorAll('#p-eua .mac').forEach(mac=>{
@@ -2939,6 +3020,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     if(t==='S&P 500'){val.id='idx-sp500-val2';if(chg)chg.id='idx-sp500-chg2';}
     else if(t==='Nasdaq'){val.id='idx-nasdaq-val2';if(chg)chg.id='idx-nasdaq-chg2';}
     else if(t==='Dow Jones'){val.id='idx-dow-val2';if(chg)chg.id='idx-dow-chg2';}
+    else if(t==='USD/BRL'){val.id='idx-dolar-val3';if(chg)chg.id='idx-dolar-chg3';}
   });
 
   // Badge de status
@@ -2952,6 +3034,82 @@ window.addEventListener('DOMContentLoaded',()=>{
   // fetchRT() agora é chamado em onFbAuthChange, após o login confirmado
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
+
+// ── NOTÍCIAS ─────────────────────────────────────────────
+let todasNoticias=[], filtroNoticias='todos', noticiasInterval=null;
+
+async function fetchNoticias(){
+  const listaEl=document.getElementById('lista-noticias');
+  const updatedEl=document.getElementById('noticias-updated');
+  if(listaEl) listaEl.innerHTML='<div class="empty-state">⏳ Carregando notícias...</div>';
+
+  try{
+    // Monta a URL com os ativos extras dinâmicos (novos ativos cadastrados via Minhas Operações)
+    let newsUrl = WORKER_URL+'?mode=news';
+    if(typeof getPosicaoCompleta==='function'){
+      const posicoes=getPosicaoCompleta();
+      const extras=Object.entries(posicoes)
+        .filter(([t,i])=>!i.temCardFixo)
+        .map(([t,i])=>t+':'+i.mercado);
+      if(extras.length) newsUrl+='&extras='+encodeURIComponent(extras.join(','));
+    }
+
+    const r=await fetch(newsUrl);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const json=await r.json();
+
+    // Combina todas as notícias com categoria
+    todasNoticias=[];
+    (json.mercado||[]).forEach(n=>{ n.categoria='mercado'; todasNoticias.push(n); });
+    (json.eua||[]).forEach(n=>{    n.categoria='eua';     todasNoticias.push(n); });
+    (json.br||[]).forEach(n=>{     n.categoria='br';      todasNoticias.push(n); });
+
+    // Ordena por data mais recente
+    todasNoticias.sort((a,b)=>new Date(b.data||0)-new Date(a.data||0));
+
+    if(updatedEl) updatedEl.textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    renderNoticias();
+
+    // Reagenda atualização automática a cada 30 minutos
+    if(noticiasInterval) clearInterval(noticiasInterval);
+    noticiasInterval=setInterval(fetchNoticias, 30*60*1000);
+
+  } catch(e){
+    console.error('[NOTICIAS] Erro:', e);
+    if(listaEl) listaEl.innerHTML='<div class="empty-state">⚠️ Erro ao carregar notícias. Tente novamente.</div>';
+  }
+}
+
+function filtrarNoticias(filtro, el){
+  filtroNoticias=filtro;
+  document.querySelectorAll('#noticias-filtros .lanc-filter').forEach(f=>f.classList.remove('on'));
+  if(el) el.classList.add('on');
+  renderNoticias();
+}
+
+function renderNoticias(){
+  const listaEl=document.getElementById('lista-noticias');
+  if(!listaEl) return;
+  let lista=filtroNoticias==='todos' ? todasNoticias : todasNoticias.filter(n=>n.categoria===filtroNoticias);
+  if(!lista.length){
+    listaEl.innerHTML='<div class="empty-state">Nenhuma notícia encontrada.</div>';
+    return;
+  }
+  listaEl.innerHTML=lista.map(n=>{
+    const badgeClass={'mercado':'news-badge-mercado','eua':'news-badge-eua','br':'news-badge-br'}[n.categoria]||'news-badge-mercado';
+    const badgeLabel={'mercado':'🌎 Mercado','eua':'🇺🇸 EUA','br':'🇧🇷 Brasil'}[n.categoria]||'Geral';
+    const ativoTag=n.ativo?`<span class="news-ativo">${n.ativo}</span>`:'';
+    const dataStr=n.data?new Date(n.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    const titulo=n.titulo.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"');
+    return `<div class="news-card" onclick="window.open('${n.url||'#'}','_blank')">
+      <div class="news-card-header">
+        <div class="news-titulo">${titulo}</div>
+        <span class="news-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="news-meta">${ativoTag}${n.fonte||''}${dataStr?' · '+dataStr:''}</div>
+    </div>`;
+  }).join('');
+}
 
 </script>
 </body>
