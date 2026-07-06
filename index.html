@@ -298,6 +298,17 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     });
   };
 
+  // Alertas de preço por ativo — { ticker: { teto: 300, piso: 150 } }
+  const alertasPrecoRef = ref(fbDB, 'alertasPreco');
+  window.fbSalvarAlertasPreco = function(obj){
+    set(alertasPrecoRef, obj).catch(e=>console.error('Erro ao salvar alertas:', e));
+  };
+  window.fbOuvirAlertasPreco = function(callback){
+    onValue(alertasPrecoRef, (snapshot) => {
+      callback(snapshot.val() || {});
+    }, (error) => { console.error('Erro ao ler alertas:', error); callback({}); });
+  };
+
   const fbAuth = getAuth(fbApp);
 
   window.fbLogin = function(email, senha){
@@ -455,6 +466,35 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
           <tbody id="tabela-alocacao-body"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.2rem">
+    <div class="ativo">
+      <div style="padding:14px">
+        <div class="ds" style="margin-bottom:10px">Rentabilidade por ativo (%)</div>
+        <div style="position:relative;height:280px">
+          <canvas id="grafico-rentabilidade"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="ativo">
+      <div style="padding:14px">
+        <div class="ds" style="margin-bottom:10px">P&L Realizado (vendas executadas)</div>
+        <div id="pl-realizado-consolidado">
+          <div class="empty-state" style="padding:1rem">Nenhuma venda registrada ainda.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ativo" style="margin-bottom:1.2rem">
+    <div style="padding:14px">
+      <div class="ds" style="margin-bottom:10px">Carteira vs Ibovespa vs S&P 500 <span style="font-size:9px;color:#aaa;font-weight:400">(base 100 — evolução relativa)</span></div>
+      <div style="position:relative;height:220px">
+        <canvas id="grafico-comparativo-indices"></canvas>
+      </div>
+      <div id="comparativo-msg" style="font-size:11px;color:#aaa;text-align:center;margin-top:6px;display:none"></div>
     </div>
   </div>
 
@@ -815,6 +855,13 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div id="cards-eua-dinamicos"></div>
+
+  <div class="ativo" style="margin-top:1rem">
+    <div style="padding:12px 14px">
+      <div class="ds" style="margin-bottom:8px">P&L Realizado — EUA</div>
+      <div id="pl-realizado-eua"><div class="empty-state" style="padding:.5rem">Nenhuma venda registrada.</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════ BR ═══════════════ -->
@@ -959,6 +1006,13 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
   </div>
 
   <div id="cards-br-dinamicos"></div>
+
+  <div class="ativo" style="margin-top:1rem">
+    <div style="padding:12px 14px">
+      <div class="ds" style="margin-bottom:8px">P&L Realizado — Brasil</div>
+      <div id="pl-realizado-br"><div class="empty-state" style="padding:.5rem">Nenhuma venda registrada.</div></div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════ ANÁLISE ═══════════════ -->
@@ -1043,6 +1097,21 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     </div>
     <button class="btn-add" style="background:#888" onclick="definirPmManual()">Salvar PM manual</button>
     <button class="btn-add" style="background:none;border:1px solid #ddd;color:#666;margin-top:6px" onclick="removerPmManual()">Remover PM manual deste ativo</button>
+  </div>
+
+  <div class="fin-form" style="margin-bottom:1.2rem">
+    <h3>🔔 Alertas de preço</h3>
+    <div style="font-size:11px;color:#888;margin-bottom:10px">Defina um teto e/ou piso para um ativo. O card será destacado visualmente quando o preço bater o alerta.</div>
+    <select class="fin-select" id="alerta-ativo">
+      <option value="">Selecione o ativo...</option>
+    </select>
+    <div class="fin-row">
+      <input class="fin-input" id="alerta-teto" type="number" min="0" step="0.01" placeholder="Teto (vender acima de)">
+      <input class="fin-input" id="alerta-piso" type="number" min="0" step="0.01" placeholder="Piso (comprar abaixo de)">
+    </div>
+    <button class="btn-add" onclick="salvarAlerta()" style="background:#534AB7">💾 Salvar alerta</button>
+    <button class="btn-add" onclick="removerAlerta()" style="background:none;border:1px solid #ddd;color:#666;margin-top:6px">🗑️ Remover alerta deste ativo</button>
+    <div id="lista-alertas" style="margin-top:10px;font-size:11px;color:#555"></div>
   </div>
 
   <div class="lancamentos">
@@ -1453,6 +1522,7 @@ window.onFbAuthChange = function(user){
     iniciarSyncFinancas();
     iniciarSyncOperacoes();
     iniciarSyncFavoritos();
+    iniciarSyncAlertas();
     if(typeof fetchRT==='function' && !window._rtIniciado){
       window._rtIniciado=true;
       fetchRT();
@@ -2135,6 +2205,10 @@ function atualizarListaAtivosOp(){
   const valorAtualPm=selPm?selPm.value:'';
   preencherSelectAtivos(selPm,null,valorAtualPm,false);
 
+  const selAlerta=document.getElementById('alerta-ativo');
+  const valorAtualAlerta=selAlerta?selAlerta.value:'';
+  preencherSelectAtivos(selAlerta,null,valorAtualAlerta,false);
+
   atualizarInfoPosicaoOp();
 }
 
@@ -2540,6 +2614,228 @@ function startCountdown(){
 
 // Gera ou atualiza um card visual simples para ativos sem card fixo no HTML
 // (ativos lançados via "Minhas Operações" que ainda não existiam na carteira original).
+// ══════════════ ALERTAS DE PREÇO ══════════════
+let alertasPreco={}, alertasCarregados=false;
+function iniciarSyncAlertas(){
+  if(window.fbOuvirAlertasPreco){
+    window.fbOuvirAlertasPreco((dados)=>{
+      alertasPreco=dados||{};
+      alertasCarregados=true;
+      renderListaAlertas();
+      if(Object.keys(QT).length>0) verificarAlertas();
+    });
+  } else { setTimeout(iniciarSyncAlertas,300); }
+}
+function salvarAlerta(){
+  const sel=document.getElementById('alerta-ativo');
+  const ticker=sel?.value;
+  const teto=parseFloat(document.getElementById('alerta-teto').value)||null;
+  const piso=parseFloat(document.getElementById('alerta-piso').value)||null;
+  if(!ticker){ alert('Selecione o ativo.'); return; }
+  if(!teto && !piso){ alert('Defina pelo menos um teto ou piso.'); return; }
+  if(!alertasPreco[ticker]) alertasPreco[ticker]={};
+  if(teto) alertasPreco[ticker].teto=teto;
+  if(piso) alertasPreco[ticker].piso=piso;
+  if(window.fbSalvarAlertasPreco) window.fbSalvarAlertasPreco(alertasPreco);
+  renderListaAlertas();
+  alert('Alerta salvo para '+ticker+'.');
+}
+function removerAlerta(){
+  const ticker=document.getElementById('alerta-ativo')?.value;
+  if(!ticker){ alert('Selecione o ativo.'); return; }
+  delete alertasPreco[ticker];
+  if(window.fbSalvarAlertasPreco) window.fbSalvarAlertasPreco(alertasPreco);
+  renderListaAlertas();
+  if(typeof renderRT==='function' && Object.keys(QT).length>0) renderRT();
+}
+function renderListaAlertas(){
+  const el=document.getElementById('lista-alertas');
+  if(!el) return;
+  const tickers=Object.keys(alertasPreco);
+  if(!tickers.length){ el.innerHTML=''; return; }
+  el.innerHTML='<div style="font-weight:600;margin-bottom:5px">Alertas ativos:</div>'+
+    tickers.map(t=>{
+      const a=alertasPreco[t];
+      return '<div style="padding:3px 0;border-bottom:1px solid #f0f0ee">'+t+
+        (a.teto?' · Teto: '+a.teto:'')+(a.piso?' · Piso: '+a.piso:'')+'</div>';
+    }).join('');
+}
+function verificarAlertas(){
+  if(!alertasCarregados) return;
+  Object.entries(alertasPreco).forEach(([ticker,alerta])=>{
+    const symKey=Object.keys(QT).find(k=>k===ticker||k===ticker+'.SA');
+    if(!symKey) return;
+    const preco=QT[symKey]?.regularMarketPrice;
+    if(!preco) return;
+    // Encontra o card do ativo (fixo ou dinâmico)
+    const card=document.querySelector(`[data-fav-ticker="${ticker}"]`)||document.querySelector(`[data-ticker="${ticker}"]`);
+    if(!card) return;
+    const atingiuTeto=alerta.teto && preco>=alerta.teto;
+    const atingiuPiso=alerta.piso && preco<=alerta.piso;
+    if(atingiuTeto){
+      card.style.border='2px solid #e74c3c';
+      card.style.boxShadow='0 0 8px rgba(231,76,60,.3)';
+      card.dataset.alertaTipo='teto';
+    } else if(atingiuPiso){
+      card.style.border='2px solid #27ae60';
+      card.style.boxShadow='0 0 8px rgba(39,174,96,.3)';
+      card.dataset.alertaTipo='piso';
+    } else {
+      card.style.border='';
+      card.style.boxShadow='';
+      delete card.dataset.alertaTipo;
+    }
+  });
+}
+
+// ══════════════ GRÁFICO DE RENTABILIDADE ══════════════
+let graficoRentabilidade=null;
+function renderGraficoRentabilidade(){
+  const canvas=document.getElementById('grafico-rentabilidade');
+  if(!canvas||typeof Chart==='undefined') return;
+  const posicoes=getPosicaoCompleta();
+  const itens=[];
+  Object.entries(posicoes).forEach(([ticker,info])=>{
+    const symKey=info.mercado==='BR'?ticker+'.SA':ticker;
+    const q=QT[symKey]||QT[ticker];
+    const p=q?q.regularMarketPrice:info.pm;
+    const pos=p*info.qtd, cst=info.pm*info.qtd;
+    const pct=cst>0?((pos-cst)/cst)*100:0;
+    itens.push({ticker,pct});
+  });
+  itens.sort((a,b)=>b.pct-a.pct);
+  const labels=itens.map(i=>i.ticker);
+  const valores=itens.map(i=>i.pct);
+  const cores=valores.map(v=>v>=0?'rgba(39,174,96,.8)':'rgba(231,76,60,.8)');
+  if(graficoRentabilidade){
+    graficoRentabilidade.data.labels=labels;
+    graficoRentabilidade.data.datasets[0].data=valores;
+    graficoRentabilidade.data.datasets[0].backgroundColor=cores;
+    graficoRentabilidade.update();
+  } else {
+    graficoRentabilidade=new Chart(canvas.getContext('2d'),{
+      type:'bar',
+      data:{labels,datasets:[{data:valores,backgroundColor:cores,borderRadius:4}]},
+      options:{
+        indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>(v.raw>=0?'+':'')+fn(v.raw)+'%'}}},
+        scales:{x:{ticks:{callback:v=>(v>=0?'+':'')+fn(v)+'%'},grid:{color:'#f0f0ee'}}}
+      }
+    });
+  }
+}
+
+// ══════════════ P&L REALIZADO ══════════════
+function calcularPLRealizado(){
+  // Agrupa vendas por ativo e calcula P&L usando o PM médio ponderado no momento da venda
+  const vendas=operacoes.filter(o=>o.tipo==='venda').sort((a,b)=>new Date(a.data)-new Date(b.data));
+  const resultado={};
+  vendas.forEach(venda=>{
+    const {ativo,mercado,qtd,preco,data}=venda;
+    const pos=posicaoAtualDoAtivo(ativo,mercado);
+    const pmNaVenda=pos.pm||preco; // usa PM atual como aproximação
+    const custo=qtd*pmNaVenda;
+    const receita=qtd*preco;
+    const pl=receita-custo;
+    if(!resultado[ativo]) resultado[ativo]={mercado,totalPL:0,operacoes:[]};
+    resultado[ativo].totalPL+=pl;
+    resultado[ativo].operacoes.push({data,qtd,preco,pl});
+  });
+  return resultado;
+}
+function htmlPLRealizado(filtroMercado){
+  const pl=calcularPLRealizado();
+  const itens=Object.entries(pl).filter(([,v])=>!filtroMercado||v.mercado===filtroMercado);
+  if(!itens.length) return '<div class="empty-state" style="padding:.5rem">Nenhuma venda registrada.</div>';
+  const moedaFn=(mercado,val)=>mercado==='EUA'?fU(val):fB(val);
+  return '<table class="tbl"><thead><tr><th>Ativo</th><th>Vendas</th><th>P&L Total</th></tr></thead><tbody>'+
+    itens.map(([ticker,v])=>`<tr>
+      <td><strong>${ticker}</strong></td>
+      <td>${v.operacoes.length}</td>
+      <td class="${v.totalPL>=0?'pos':'neg'}">${v.totalPL>=0?'+':''}${moedaFn(v.mercado,Math.abs(v.totalPL))}</td>
+    </tr>`).join('')+'</tbody></table>';
+}
+function renderPLRealizado(){
+  const elC=document.getElementById('pl-realizado-consolidado');
+  const elE=document.getElementById('pl-realizado-eua');
+  const elB=document.getElementById('pl-realizado-br');
+  if(elC) elC.innerHTML=htmlPLRealizado(null);
+  if(elE) elE.innerHTML=htmlPLRealizado('EUA');
+  if(elB) elB.innerHTML=htmlPLRealizado('BR');
+}
+
+// ══════════════ COMPARATIVO CARTEIRA VS ÍNDICES ══════════════
+let graficoComparativo=null;
+function renderComparativoIndices(){
+  const canvas=document.getElementById('grafico-comparativo-indices');
+  const msgEl=document.getElementById('comparativo-msg');
+  if(!canvas||typeof Chart==='undefined'||!window.fbBuscarSnapshotsCarteira) return;
+  window.fbBuscarSnapshotsCarteira((snapshots)=>{
+    const datas=Object.keys(snapshots).sort();
+    if(datas.length<2){
+      if(msgEl){msgEl.style.display='block';msgEl.textContent='Histórico insuficiente — o gráfico aparecerá quando houver mais dias de dados.';}
+      canvas.style.display='none'; return;
+    }
+    if(msgEl) msgEl.style.display='none';
+    canvas.style.display='block';
+    const labels=[], serieCart=[], serieIbov=[], serieSP=[];
+    const posicoes=getPosicaoCompleta();
+    datas.forEach(data=>{
+      const snap=snapshots[data];
+      if(!snap||!snap.carteira) return;
+      let totalEUA=0,totalBR=0;
+      Object.entries(posicoes).forEach(([ticker,info])=>{
+        const p=snap.carteira[ticker];
+        if(p==null) return;
+        const val=p*info.qtd;
+        if(info.mercado==='EUA') totalEUA+=val;
+        else totalBR+=val;
+      });
+      const pat=(totalEUA*(snap.dolar||rtDolar))+totalBR;
+      if(pat>0){
+        const d=new Date(data+'T12:00:00');
+        labels.push(d.getDate()+'/'+(d.getMonth()+1));
+        serieCart.push(pat);
+        serieIbov.push(snap.ibovespa||null);
+        serieSP.push(snap.sp500||null);
+      }
+    });
+    if(labels.length<2){
+      if(msgEl){msgEl.style.display='block';msgEl.textContent='Dados históricos insuficientes para o comparativo.';}
+      canvas.style.display='none'; return;
+    }
+    // Normaliza para base 100 (evolução relativa a partir do primeiro ponto)
+    const norm=(arr)=>{
+      const base=arr.find(v=>v!=null);
+      if(!base) return arr.map(()=>null);
+      return arr.map(v=>v!=null?((v/base)*100):null);
+    };
+    const cartBase=norm(serieCart), ibovBase=norm(serieIbov), spBase=norm(serieSP);
+    if(graficoComparativo){
+      graficoComparativo.data.labels=labels;
+      graficoComparativo.data.datasets[0].data=cartBase;
+      graficoComparativo.data.datasets[1].data=ibovBase;
+      graficoComparativo.data.datasets[2].data=spBase;
+      graficoComparativo.update();
+    } else {
+      graficoComparativo=new Chart(canvas.getContext('2d'),{
+        type:'line',
+        data:{labels,datasets:[
+          {label:'Carteira',data:cartBase,borderColor:'#534AB7',backgroundColor:'transparent',tension:.3,pointRadius:2},
+          {label:'Ibovespa',data:ibovBase,borderColor:'#27ae60',backgroundColor:'transparent',tension:.3,pointRadius:2},
+          {label:'S&P 500', data:spBase, borderColor:'#e74c3c',backgroundColor:'transparent',tension:.3,pointRadius:2},
+        ]},
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+            tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.raw!=null?fn(ctx.raw,1):'—')}}},
+          scales:{y:{ticks:{callback:v=>fn(v,0)}}}
+        }
+      });
+    }
+  });
+}
+
 function renderCardDinamico(ticker, info, p, vp, pos, cst, res, pct, temCotacao){
   const containerId = 'cards-'+info.mercado.toLowerCase()+'-dinamicos';
   const container = document.getElementById(containerId);
@@ -2874,6 +3170,12 @@ function renderRT(){
     reordenarFavoritos('#p-br');
     reordenarFavoritos('#cards-br-dinamicos');
   }
+
+  // Novos gráficos e seções de investimentos
+  renderGraficoRentabilidade();
+  renderPLRealizado();
+  if(!graficoComparativo) renderComparativoIndices();
+  if(alertasCarregados) verificarAlertas();
 }
 
 function updateRanking(){
