@@ -539,41 +539,10 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="mac"><div class="mac-l">VIX</div><div class="mac-v">16,79</div><div class="mac-s neu">Medo baixo</div></div>
   </div>
 
-  <div class="news-section">
-    <div class="news-section-header" onclick="toggleNews('news-eua')">
-      <div class="news-title">📰 Destaques da semana — seus ativos EUA</div>
-      <button class="news-toggle" id="news-eua-btn">▼ Minimizar</button>
-    </div>
-    <div class="news-body" id="news-eua">
-    <div class="news-item">
-      <span class="news-badge nb-neg">NVDA -1,5%</span>
-      <div><div class="news-text">Semana pressionada por sell-off em chips após resultados da Broadcom. Mas NVDA recuperou +1,7% na sexta. Revenue FY26: US$215,9bi (+65%). Target médio dos analistas: US$298,42 (+46% de upside). Próximo earnings: 26/08/2026. ATH: US$236,54 (mai/26).</div><div class="news-date">06/06/2026 — StockAnalysis / Robinhood</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-neg">REGN -11,1%</span>
-      <div><div class="news-text">Maior queda da carteira na semana. Preço caiu de ~US$765 para US$639. P/E agora em 15,32x — um dos mais baixos em anos para a Regeneron. Dupixent segue crescendo. Expansão para hipertensão pulmonar (Fase 2) e câncer de próstata (CAR-T Fase 1). Target médio: US$841 (+31% de upside). Oportunidade de acompanhar de perto.</div><div class="news-date">05–06/06/2026 — Robinhood / StockAnalysis</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-neg">TSLA -7,9%</span>
-      <div><div class="news-text">Recuperou +3,5% na sexta após semana difícil. JPMorgan, Erste Group e Barclays emitiram upgrades na semana. Vendas globais de EVs subiram 16% em abril lideradas por Tesla. 2026 é ano de base — crescimento acelerado projetado para 2027+. Posição ainda +40% de resultado.</div><div class="news-date">06/06/2026 — CNN / TipRanks</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-neg">TSM -6,7%</span>
-      <div><div class="news-text">CEO C.C. Wei alertou que gap de oferta de chips de IA persistirá por anos — paradoxalmente bullish para longo prazo. Dividendo US$0,955 com ex-date 11/06/2026. Market cap: US$1,95 trilhão (+139% em 12 meses). Target: US$467,84 (+12,7%).</div><div class="news-date">04–06/06/2026 — Yahoo Finance / Investing.com</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-pos">NU — Buyback $1bi</span>
-      <div><div class="news-text">Nu Holdings próxima ao suporte técnico de US$11,80–12,00. Buyback de US$1bi anunciado em 04/06 é sinal positivo. EPS Q1: $0,18 (miss de 10%), mas receita recorde de US$5bi com lucro líquido +41% A/A. Próximo earnings: 18/08/2026. Target médio: US$18,48 (+54% de upside).</div><div class="news-date">04–06/06/2026 — Investing.com / TipRanks</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-neg">AMZN -1,0%</span>
-      <div><div class="news-text">Acumula -7,7% no ano. Mercado digere capex de US$200bi para IA. AWS cresceu 17% A/A. Prime Day retorna em 23/06 — 4 dias, evento mais cedo que o usual. Target médio: US$312 (+27% de upside). Cathie Wood comprou na queda recente.</div><div class="news-date">06/06/2026 — Robinhood / Nasdaq</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-pos">LMT +0,2% / IAU +0,5%</span>
-      <div><div class="news-text">LMT segue resiliente: contrato de US$879M firmado, dividendo Q2 de US$3,45/ação. IAU em US$85,22, +42% desde o PM da carteira. Ouro recuou com alívio geopolítico EUA-Irã mas mantém tendência de alta estrutural.</div><div class="news-date">06/06/2026</div></div>
-    </div>
-    </div>
+  <div class="news-section" style="text-align:center;padding:16px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px">📰 Destaques da semana</div>
+    <div style="font-size:11px;color:#888;margin-bottom:10px">As notícias dos seus ativos agora ficam atualizadas automaticamente na aba dedicada.</div>
+    <button onclick="st('noticias',document.querySelector('[data-panel=noticias]'))" style="font-size:12px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:7px 16px;cursor:pointer">Ver notícias agora →</button>
   </div>
 
   <div class="sec">Posições EUA — fechamento 06/06/2026</div>
@@ -821,9 +790,9 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="ah" onclick="tg('spcx')">
       <div class="aleft"><div class="tb">SPCX</div><div><div class="an">SpaceX — Space Exploration Technologies</div><div class="as">Aeroespacial / IA / Starlink — NASDAQ</div></div></div>
       <div class="aright">
-        <div><div class="pr">US$ 222,38</div><div class="pm">0,229 ações · PM US$174,57</div></div>
-        <span class="vb vp">+15,5%</span>
-        <div class="res pos">+US$ 10,95</div>
+        <div><div class="pr">US$ 139,05</div><div class="pm">0,229 ações · PM US$174,57</div></div>
+        <span class="vb vn">-20,3%</span>
+        <div class="res neg">-US$ 8,14</div>
         <span class="chev" id="c-spcx">▼</span>
       </div>
     </div>
@@ -833,9 +802,9 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
           <div class="kv"><span class="kk">Qtd</span><span class="vv">0,22912</span></div>
           <div class="kv"><span class="kk">PM</span><span class="vv">US$ 174,57</span></div>
           <div class="kv"><span class="kk">Custo</span><span class="vv">US$ 40,00</span></div>
-          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 50,95</span></div>
-          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+US$ 10,95 (+27,4%)</span></div>
-          <div class="kv"><span class="kk">Preço hoje</span><span class="vv">US$ 222,38</span></div>
+          <div class="kv"><span class="kk">Posição atual</span><span class="vv">US$ 31,86</span></div>
+          <div class="kv"><span class="kk">Resultado</span><span class="vv neg">-US$ 8,14 (-20,3%)</span></div>
+          <div class="kv"><span class="kk">Preço hoje</span><span class="vv">US$ 139,05</span></div>
           <div class="kv"><span class="kk">Var. dia</span><span class="vv">—</span></div>
         </div>
         <div class="dc"><div class="ds">Análise</div>
@@ -881,131 +850,11 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <div class="mac"><div class="mac-l">CDI</div><div class="mac-v">~14,15%</div><div class="mac-s neu">Benchmark</div></div>
   </div>
 
-  <div class="news-section">
-    <div class="news-section-header" onclick="toggleNews('news-br')">
-      <div class="news-title">📰 Destaques — seus ativos BR e macro</div>
-      <button class="news-toggle" id="news-br-btn">▼ Minimizar</button>
-    </div>
-    <div class="news-body" id="news-br">
-    <div class="news-item">
-      <span class="news-badge nb-pos">ITSA4</span>
-      <div><div class="news-text">JCP de R$0,06/ação com data-com em 11/06/2026 — próxima semana. Entra na Carteira BB Dividendos de junho. DY 12m: 9,59%. Selic em 14,5% continua favorecendo Itaú. Suporte: R$11,50. Resistência: R$13,50.</div><div class="news-date">Jun/2026 — BB Investimentos / Investidor10</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-pos">TAEE11</span>
-      <div><div class="news-text">BB Investimentos elevou para COMPRA com alvo R$42,60 (+9,5% do preço atual). Aquisição de 5 linhas da Energisa por R$2,3bi adiciona RAP de R$291M (+6,5%). Acumulado de dividendos em 2026: R$1,47/cota. DY 12m: 8,39%.</div><div class="news-date">21/05/2026 — Investidor10</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-neu">WEGE3</span>
-      <div><div class="news-text">2026 pressionado por câmbio — receita projetada +3% A/A. Reaceleração esperada em 2027 (+14-16%). Alvo XP: R$47 (neutro). Cotação atual ~R$41,51. Próximo ao suporte de R$40 — não aportar agora, aguardar reaceleração de resultados.</div><div class="news-date">Jun/2026 — XP</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-info">Macro BR</span>
-      <div><div class="news-text">Dólar em R$5,009 (-8,7% no ano) beneficia carteira EUA convertida em BRL. IPCA em 5,09% acima do teto — Copom pode pausar cortes da Selic. Ibovespa em 174.197 pontos. Negociações de tarifas EUA-BR em andamento.</div><div class="news-date">06/06/2026 — CNN Brasil / Investing.com</div></div>
-    </div>
-    <div class="news-item">
-      <span class="news-badge nb-info">Atenção: 11/06</span>
-      <div><div class="news-text">Segunda-feira 11/06 é data-com do JCP da ITSA4 (R$0,06/ação) e data-ex do dividendo da TSM (US$0,955). Quem tiver as ações até o fechamento de sexta 06/06 já tem direito a ambos os proventos.</div><div class="news-date">Calendário de proventos</div></div>
-    </div>
-    </div>
+  <div class="news-section" style="text-align:center;padding:16px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px">📰 Destaques da semana</div>
+    <div style="font-size:11px;color:#888;margin-bottom:10px">As notícias dos seus ativos agora ficam atualizadas automaticamente na aba dedicada.</div>
+    <button onclick="st('noticias',document.querySelector('[data-panel=noticias]'))" style="font-size:12px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:7px 16px;cursor:pointer">Ver notícias agora →</button>
   </div>
-
-  <div class="sec">Posições Brasil</div>
-  <div class="mgrid">
-    <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">R$ 2.119,70</div></div>
-    <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v pos">R$ 2.518,40</div></div>
-    <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v pos">+R$ 398,60</div></div>
-    <div class="mc"><div class="mc-l">Resultado %</div><div class="mc-v pos">+18,8%</div></div>
-  </div>
-
-  <div class="ativo">
-    <div class="ah" onclick="tg('itsa4')">
-      <div class="aleft"><div class="tb">ITSA4</div><div><div class="an">Itaúsa S.A.</div><div class="as">Holding financeira — B3</div></div></div>
-      <div class="aright"><div><div class="pr">R$ 12,72</div><div class="pm">100 ações · PM R$9,54</div></div><span class="vb vp">+33,3%</span><div class="res pos">+R$ 349,80</div><span class="chev" id="c-itsa4">▼</span></div>
-    </div>
-    <div class="det" id="itsa4">
-      <div class="dg">
-        <div class="dc"><div class="ds">Posição</div>
-          <div class="kv"><span class="kk">Qtd</span><span class="vv">100 ações</span></div>
-          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 9,54</span></div>
-          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 12,72</span></div>
-          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 1.399,20</span></div>
-          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 349,80 (+33,3%)</span></div>
-        </div>
-        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
-          <div class="kv"><span class="kk">DY 12m</span><span class="vv pos">9,59%</span></div>
-          <div class="kv"><span class="kk">JCP data-com</span><span class="vv pos">11/06/26 — R$0,06/ação</span></div>
-          <div class="kv"><span class="kk">Carteira BB Div.</span><span class="vv pos">Junho/2026</span></div>
-          <div class="kv"><span class="kk">Suporte</span><span class="vv">R$ 11,50</span></div>
-          <div class="kv"><span class="kk">Resistência</span><span class="vv">R$ 13,50</span></div>
-        </div>
-        <div class="dc"><div class="ds">Veredicto B&H</div>
-          <span class="pill pbuy">Manter / aportar</span>
-          <div class="vtxt">JCP na próxima semana (data-com 11/06). DY 9,59% com Selic favorecendo Itaú. Melhor candidata a aporte na carteira BR.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="ativo">
-    <div class="ah" onclick="tg('taee11')">
-      <div class="aleft"><div class="tb">TAEE11</div><div><div class="an">Taesa S.A.</div><div class="as">Transmissão de energia — B3</div></div></div>
-      <div class="aright"><div><div class="pr">R$ 38,90</div><div class="pm">10 cotas · PM R$35,89</div></div><span class="vb vp">+8,4%</span><div class="res pos">+R$ 30,10</div><span class="chev" id="c-taee11">▼</span></div>
-    </div>
-    <div class="det" id="taee11">
-      <div class="dg">
-        <div class="dc"><div class="ds">Posição</div>
-          <div class="kv"><span class="kk">Qtd</span><span class="vv">10 cotas</span></div>
-          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 35,89</span></div>
-          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 38,90</span></div>
-          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 389,00</span></div>
-          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 30,10 (+8,4%)</span></div>
-        </div>
-        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
-          <div class="kv"><span class="kk">DY 12m</span><span class="vv pos">8,39%</span></div>
-          <div class="kv"><span class="kk">Div. acum. 2026</span><span class="vv pos">R$1,47/cota</span></div>
-          <div class="kv"><span class="kk">Alvo BB Invest.</span><span class="vv pos">R$42,60 (compra)</span></div>
-          <div class="kv"><span class="kk">Aquisição Energisa</span><span class="vv pos">+RAP R$291M</span></div>
-          <div class="kv"><span class="kk">Suporte / Resist.</span><span class="vv">R$37 / R$43,76</span></div>
-        </div>
-        <div class="dc"><div class="ds">Veredicto B&H</div>
-          <span class="pill pbuy">Manter — dividendeira</span>
-          <div class="vtxt">BB elevou para COMPRA com alvo R$42,60. Aquisição da Energisa reforça base de receita regulada. DY 8,39% com fluxo previsível.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="ativo">
-    <div class="ah" onclick="tg('wege3')">
-      <div class="aleft"><div class="tb">WEGE3</div><div><div class="an">WEG S.A.</div><div class="as">Motores / Equipamentos — B3</div></div></div>
-      <div class="aright"><div><div class="pr">R$ 41,51</div><div class="pm">20 ações · PM R$40,34</div></div><span class="vb vp">+2,9%</span><div class="res pos">+R$ 23,40</div><span class="chev" id="c-wege3">▼</span></div>
-    </div>
-    <div class="det" id="wege3">
-      <div class="dg">
-        <div class="dc"><div class="ds">Posição</div>
-          <div class="kv"><span class="kk">Qtd</span><span class="vv">20 ações</span></div>
-          <div class="kv"><span class="kk">PM</span><span class="vv">R$ 40,34</span></div>
-          <div class="kv"><span class="kk">Cotação</span><span class="vv">R$ 41,51</span></div>
-          <div class="kv"><span class="kk">Posição</span><span class="vv">R$ 830,20</span></div>
-          <div class="kv"><span class="kk">Resultado</span><span class="vv pos">+R$ 23,40 (+2,9%)</span></div>
-        </div>
-        <div class="dc"><div class="ds">Técnica & Fundamentos</div>
-          <div class="kv"><span class="kk">P/L 2026E</span><span class="vv neu">29x</span></div>
-          <div class="kv"><span class="kk">P/L 2027E</span><span class="vv pos">25x</span></div>
-          <div class="kv"><span class="kk">Receita 2026E</span><span class="vv neg">+3% A/A</span></div>
-          <div class="kv"><span class="kk">Alvo XP</span><span class="vv neu">R$47 (neutro)</span></div>
-          <div class="kv"><span class="kk">Suporte</span><span class="vv">R$ 40</span></div>
-        </div>
-        <div class="dc"><div class="ds">Veredicto B&H</div>
-          <span class="pill phold">Manter — aguardar 2027</span>
-          <div class="vtxt">Ótima empresa, 2026 pressionado por câmbio. Reaceleração em 2027. Aguardar R$38–40 para oportunidade de aporte.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="cards-br-dinamicos"></div>
 
   <div class="ativo" style="margin-top:1rem">
     <div style="padding:12px 14px">
