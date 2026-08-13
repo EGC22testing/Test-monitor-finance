@@ -449,6 +449,18 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     </div>
   </div>
 
+  <div class="ativo" style="margin-bottom:1.2rem">
+    <div style="padding:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div class="ds">🤖 Análise IA da Carteira</div>
+        <button id="btn-analise-ia" onclick="gerarAnaliseIA()" style="font-size:11px;background:#534AB7;color:#fff;border:none;border-radius:14px;padding:6px 14px;cursor:pointer">✨ Analisar agora</button>
+      </div>
+      <div id="analise-ia-container">
+        <div style="font-size:12px;color:#aaa;text-align:center;padding:1rem">Clique em "Analisar agora" para gerar um resumo inteligente da sua carteira com apoio de IA.</div>
+      </div>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.2rem" id="alocacao-grid">
     <div class="ativo">
       <div style="padding:14px">
@@ -2691,20 +2703,54 @@ function renderGraficoRentabilidade(){
 
 // ══════════════ P&L REALIZADO ══════════════
 function calcularPLRealizado(){
-  // Agrupa vendas por ativo e calcula P&L usando o PM médio ponderado no momento da venda
-  const vendas=operacoes.filter(o=>o.tipo==='venda').sort((a,b)=>new Date(a.data)-new Date(b.data));
-  const resultado={};
-  vendas.forEach(venda=>{
-    const {ativo,mercado,qtd,preco,data}=venda;
-    const pos=posicaoAtualDoAtivo(ativo,mercado);
-    const pmNaVenda=pos.pm||preco; // usa PM atual como aproximação
-    const custo=qtd*pmNaVenda;
-    const receita=qtd*preco;
-    const pl=receita-custo;
-    if(!resultado[ativo]) resultado[ativo]={mercado,totalPL:0,operacoes:[]};
-    resultado[ativo].totalPL+=pl;
-    resultado[ativo].operacoes.push({data,qtd,preco,pl});
+  // Reconstrói o PM no momento de cada venda replaying o histórico cronológico.
+  // Isso resolve o bug onde o PM pós-venda total era 0, zerando o P&L.
+
+  // 1. Monta lista de todas as operações: CART como compras iniciais + operacoes do Firebase
+  const opsIniciais = typeof CART !== 'undefined'
+    ? Object.entries(CART).map(([sym, info]) => ({
+        tipo: 'compra',
+        ativo: sym.replace('.SA',''),
+        mercado: info.m === 'BRL' ? 'BR' : 'EUA',
+        qtd: info.qtd,
+        preco: info.pm,
+        data: '2000-01-01', // anterior a qualquer operação real
+      }))
+    : [];
+
+  const todasOps = [...opsIniciais, ...operacoes]
+    .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+  // 2. Replay: mantém estado {qtd, custoTotal} por ativo e acumula P&L nas vendas
+  const estado = {};
+  const resultado = {};
+
+  todasOps.forEach(op => {
+    const key = op.ativo + '|' + op.mercado;
+    if (!estado[key]) estado[key] = { qtd: 0, custoTotal: 0 };
+
+    if (op.tipo === 'compra') {
+      estado[key].qtd += op.qtd;
+      estado[key].custoTotal += op.qtd * op.preco;
+    } else if (op.tipo === 'venda') {
+      const pmNaVenda = estado[key].qtd > 0
+        ? estado[key].custoTotal / estado[key].qtd
+        : op.preco; // fallback: usa preço da venda se não houver histórico
+      const custo   = op.qtd * pmNaVenda;
+      const receita = op.qtd * op.preco;
+      const pl      = receita - custo;
+
+      // Atualiza estado após a venda
+      estado[key].qtd       -= op.qtd;
+      estado[key].custoTotal -= custo;
+      if (estado[key].qtd < 0.0000001) { estado[key].qtd = 0; estado[key].custoTotal = 0; }
+
+      if (!resultado[op.ativo]) resultado[op.ativo] = { mercado: op.mercado, totalPL: 0, operacoes: [] };
+      resultado[op.ativo].totalPL += pl;
+      resultado[op.ativo].operacoes.push({ data: op.data, qtd: op.qtd, preco: op.preco, pm: pmNaVenda, pl });
+    }
   });
+
   return resultado;
 }
 function htmlPLRealizado(filtroMercado){
@@ -3318,6 +3364,105 @@ window.addEventListener('DOMContentLoaded',()=>{
   // fetchRT() agora é chamado em onFbAuthChange, após o login confirmado
 });
 // ── FIM COTAÇÕES EM TEMPO REAL ──────────────────────────
+
+// ── ANÁLISE IA DA CARTEIRA ────────────────────────────────
+async function gerarAnaliseIA(){
+  const btn=document.getElementById('btn-analise-ia');
+  const container=document.getElementById('analise-ia-container');
+  if(!container) return;
+
+  btn.disabled=true;
+  btn.textContent='⏳ Analisando...';
+  container.innerHTML='<div style="font-size:12px;color:#888;padding:1rem;text-align:center">Consultando IA, aguarde alguns segundos...</div>';
+
+  try{
+    // Coleta dados da carteira para enviar à IA
+    const posicoes=getPosicaoCompleta();
+    const pl=calcularPLRealizado();
+    const totalEUA=parseFloat(document.getElementById('rt-eua-pos')?.textContent?.replace(/[^0-9.,-]/g,'')||0);
+    const totalBR=parseFloat(document.getElementById('rt-br-pos')?.textContent?.replace(/[^0-9,.]/g,'')||0);
+
+    const ativos=Object.entries(posicoes).map(([ticker,info])=>{
+      const symKey=info.mercado==='BR'?ticker+'.SA':ticker;
+      const q=QT[symKey]||QT[ticker];
+      const preco=q?q.regularMarketPrice:info.pm;
+      const varDia=q?q.regularMarketChangePercent:0;
+      const pos=preco*info.qtd;
+      const cst=info.pm*info.qtd;
+      const res=pos-cst;
+      const pct=cst>0?((res/cst)*100):0;
+      const moeda=info.mercado==='EUA'?'USD':'BRL';
+      return `${ticker} (${info.mercado}): ${info.qtd} ações · PM ${moeda} ${info.pm.toFixed(2)} · Preço atual ${moeda} ${preco.toFixed(2)} · Resultado ${res>=0?'+':''}${pct.toFixed(1)}% · Var. dia ${varDia>=0?'+':''}${varDia.toFixed(2)}%`;
+    }).join('\n');
+
+    const plTexto=Object.entries(pl).map(([ticker,v])=>
+      `${ticker}: ${v.operacoes.length} venda(s) · P&L ${v.totalPL>=0?'+':''}${v.mercado==='EUA'?fU(Math.abs(v.totalPL)):fB(Math.abs(v.totalPL))}`
+    ).join('\n') || 'Nenhuma venda registrada.';
+
+    const dolarAtual=rtDolar.toFixed(3);
+    const ibov=document.getElementById('idx-ibov-val')?.textContent||'—';
+    const sp=document.getElementById('idx-sp500-val')?.textContent||'—';
+    const selic=document.getElementById('idx-selic-val')?.textContent||'—';
+
+    const prompt=`Você é um analista financeiro especializado em investimentos brasileiros e americanos. Analise a seguinte carteira de investimentos e forneça um resumo inteligente e objetivo.
+
+CONTEXTO DE MERCADO:
+- Dólar: R$ ${dolarAtual}
+- Ibovespa: ${ibov}
+- S&P 500: ${sp}
+- Selic: ${selic}
+
+POSIÇÕES ATUAIS:
+${ativos}
+
+P&L REALIZADO (vendas executadas):
+${plTexto}
+
+Por favor, forneça:
+1. **Resumo geral** — performance da carteira, pontos de destaque positivos e negativos
+2. **Análise por país** — EUA vs Brasil, diversificação cambial
+3. **Destaques** — ativo com melhor e pior desempenho
+4. **Observação de risco** — concentração, volatilidade recente
+5. **Sugestão B&H** — 1 ação objetiva de curto prazo (sem ser conselho financeiro formal)
+
+Seja direto, use marcadores, limite a resposta a 300 palavras.`;
+
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+
+    const data=await resp.json();
+    const texto=data?.content?.[0]?.text||'Não foi possível gerar a análise.';
+
+    // Renderiza o texto markdown simples
+    const html=texto
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^### (.+)$/gm,'<div style="font-weight:700;margin-top:10px;color:#534AB7">$1</div>')
+      .replace(/^## (.+)$/gm,'<div style="font-weight:700;font-size:13px;margin-top:12px">$1</div>')
+      .replace(/^# (.+)$/gm,'<div style="font-weight:700;font-size:14px;margin-top:12px">$1</div>')
+      .replace(/^[\d]+\. (.+)$/gm,'<div style="margin:4px 0;padding-left:8px">$&</div>')
+      .replace(/^[-•] (.+)$/gm,'<div style="margin:3px 0;padding-left:12px">• $1</div>')
+      .replace(/\n\n/g,'<br><br>')
+      .replace(/\n/g,'<br>');
+
+    const ts=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    container.innerHTML=`
+      <div style="font-size:12px;line-height:1.6;color:#333">${html}</div>
+      <div style="font-size:10px;color:#bbb;margin-top:10px;text-align:right">Gerado às ${ts} · Não é conselho financeiro formal</div>`;
+
+  } catch(e){
+    container.innerHTML=`<div style="font-size:12px;color:#e74c3c;padding:.5rem">Erro ao gerar análise: ${e.message}</div>`;
+  } finally{
+    btn.disabled=false;
+    btn.textContent='✨ Analisar novamente';
+  }
+}
 
 // ── NOTÍCIAS ─────────────────────────────────────────────
 let todasNoticias=[], filtroNoticias='todos', noticiasInterval=null;
