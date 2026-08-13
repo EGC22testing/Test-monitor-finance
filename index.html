@@ -3093,6 +3093,24 @@ function renderRT(){
     });
   });
 
+  // Oculta cards fixos (do CART) cujas posições foram zeradas por vendas
+  if(typeof CART!=='undefined'){
+    Object.entries(CART).forEach(([sym, info])=>{
+      const ticker=sym.replace('.SA','');
+      const mercado=info.m==='BRL'?'BR':'EUA';
+      const temPosicao=posicoes[ticker] && posicoes[ticker].mercado===mercado;
+      const card=document.querySelector('[data-fav-ticker="'+ticker+'"]');
+      if(card){
+        card.style.display=temPosicao?'':'none';
+      } else {
+        // tenta pelo id do card fixo
+        const idDom=info.id;
+        const ativo=document.querySelector('[id="c-'+idDom+'"]')?.closest('.ativo');
+        if(ativo) ativo.style.display=temPosicao?'':'none';
+      }
+    });
+  }
+
   // Totais EUA
   const rEUA=totEUA_pos-totEUA_cst, pEUA=totEUA_cst>0?(rEUA/totEUA_cst)*100:0;
   setEl('rt-eua-pos', fU(totEUA_pos));
