@@ -3436,7 +3436,16 @@ Seja direto, use marcadores, limite a resposta a 300 palavras.`;
     });
 
     const data=await resp.json();
-    const texto=data?.content?.[0]?.text||'Não foi possível gerar a análise.';
+
+    // Verifica erros explícitos do Worker ou da API
+    if(!resp.ok || data?.error){
+      throw new Error(data?.error || `HTTP ${resp.status}`);
+    }
+    if(data?.type==='error'){
+      throw new Error(`Anthropic API: ${data?.error?.message||data?.error?.type||'erro desconhecido'}`);
+    }
+    const texto=data?.content?.[0]?.text
+      || `[Debug] ${JSON.stringify(data).slice(0,400)}`;
 
     // Renderiza o texto markdown simples
     const html=texto
