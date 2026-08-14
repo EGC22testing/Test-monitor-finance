@@ -3430,22 +3430,14 @@ Seja direto, use marcadores, limite a resposta a 300 palavras.`;
     const resp=await fetch(WORKER_URL+'?mode=ia',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        messages:[{role:'user',content:prompt}]
-      })
+      body:JSON.stringify({ prompt })
     });
 
     const data=await resp.json();
-
-    // Verifica erros explícitos do Worker ou da API
     if(!resp.ok || data?.error){
-      throw new Error(data?.error || `HTTP ${resp.status}`);
+      throw new Error(typeof data?.error==='object' ? JSON.stringify(data.error).slice(0,200) : (data?.error||`HTTP ${resp.status}`));
     }
-    if(data?.type==='error'){
-      throw new Error(`Anthropic API: ${data?.error?.message||data?.error?.type||'erro desconhecido'}`);
-    }
-    const texto=data?.content?.[0]?.text
-      || `[Debug] ${JSON.stringify(data).slice(0,400)}`;
+    const texto = data?.texto || '[Debug] Resposta vazia';
 
     // Renderiza o texto markdown simples
     const html=texto
