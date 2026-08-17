@@ -3103,9 +3103,18 @@ function renderRT(){
         const pmEl = ativo.querySelector('.pm');
         if(pmEl) pmEl.textContent = info.qtd+' ações · PM '+(moedaUSD?'US$':'R$')+pmEfetivo.toFixed(2);
         const vbEl = ativo.querySelector('.vb');
-        if(vbEl){ vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia'; vbEl.className='vb '+(vp>=0?'vp':'vn'); }
+        if(vbEl){
+          vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia';
+          vbEl.className='vb '+(vp>=0?'vp':'vn');
+          vbEl.style.background=vp>=0?'#eaf3de':'#fcebeb';
+          vbEl.style.color=vp>=0?'#27500a':'#791f1f';
+        }
         const rsEl = ativo.querySelector('.res');
-        if(rsEl){ rsEl.textContent=(res>=0?'+':'')+(moedaUSD?fU(res):fB(res)); rsEl.className='res '+(res>=0?'pos':'neg'); }
+        if(rsEl){
+          rsEl.textContent=(res>=0?'+':'')+(moedaUSD?fU(res):fB(res));
+          rsEl.className='res '+(res>=0?'pos':'neg');
+          rsEl.style.color=res>=0?'#27ae60':'#e74c3c';
+        }
       }
       const det = document.getElementById(idDom);
       if(det){
