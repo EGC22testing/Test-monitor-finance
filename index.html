@@ -870,7 +870,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
   <div class="sec">Posições Brasil</div>
   <div class="mgrid">
-    <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v">R$ 0,00</div></div>
+    <div class="mc"><div class="mc-l">Total investido</div><div class="mc-v" id="rt-br-cst">R$ 0,00</div></div>
     <div class="mc"><div class="mc-l">Posição atual</div><div class="mc-v" id="rt-br-pos">R$ 0,00</div></div>
     <div class="mc"><div class="mc-l">Resultado</div><div class="mc-v" id="rt-br-res">R$ 0,00</div></div>
     <div class="mc"><div class="mc-l">Rentabilidade</div><div class="mc-v" id="rt-br-pct">0,00%</div></div>
@@ -3076,7 +3076,8 @@ function renderRT(){
     const vp  = q ? (q.regularMarketChangePercent || 0) : 0;
     const temCotacao = !!q;
     const pos = p * info.qtd;
-    const cst = info.pm * info.qtd;
+    const pmEfetivo = info.pm > 0 ? info.pm : p; // fallback: usa preco atual se pm for zero
+    const cst = pmEfetivo * info.qtd;
     const res = pos - cst;
     const pct = cst>0 ? ((pos - cst) / cst) * 100 : 0;
     const moedaUSD = info.mercado==='EUA';
@@ -3100,7 +3101,7 @@ function renderRT(){
         const prEl = ativo.querySelector('.pr');
         if(prEl) prEl.textContent = (moedaUSD ? fU(p) : fB(p)) + (temCotacao?'':' (PM)');
         const pmEl = ativo.querySelector('.pm');
-        if(pmEl) pmEl.textContent = info.qtd+' ações · PM '+(moedaUSD?'US$':'R$')+info.pm.toFixed(2);
+        if(pmEl) pmEl.textContent = info.qtd+' ações · PM '+(moedaUSD?'US$':'R$')+pmEfetivo.toFixed(2);
         const vbEl = ativo.querySelector('.vb');
         if(vbEl){ vbEl.textContent=(vp>=0?'+':'')+fn(vp)+'% dia'; vbEl.className='vb '+(vp>=0?'vp':'vn'); }
         const rsEl = ativo.querySelector('.res');
@@ -3165,6 +3166,7 @@ function renderRT(){
 
   // Totais BR
   const rBR=totBR_pos-totBR_cst, pBR=totBR_cst>0?(rBR/totBR_cst)*100:0;
+  setEl('rt-br-cst', fB(totBR_cst));
   setEl('rt-br-pos', fB(totBR_pos));
   setEl('rt-br-res', (rBR>=0?'+':'')+fB(Math.abs(rBR)));
   setEl('rt-br-pct', (pBR>=0?'+':'')+fn(pBR)+'%');
