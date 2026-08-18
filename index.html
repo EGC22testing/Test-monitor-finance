@@ -298,7 +298,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     });
   };
 
-  // Alertas de preço por ativo — { ticker: { teto: 300, piso: 150 } }
+  // Alertas de preço por ativo
   const alertasPrecoRef = ref(fbDB, 'alertasPreco');
   window.fbSalvarAlertasPreco = function(obj){
     set(alertasPrecoRef, obj).catch(e=>console.error('Erro ao salvar alertas:', e));
@@ -307,6 +307,16 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     onValue(alertasPrecoRef, (snapshot) => {
       callback(snapshot.val() || {});
     }, (error) => { console.error('Erro ao ler alertas:', error); callback({}); });
+  };
+
+  // Análise IA — salva o último relatório para carregar sem chamar a IA novamente
+  const analiseIARef = ref(fbDB, 'analiseIA');
+  window.fbSalvarAnaliseIA = function(texto){
+    set(analiseIARef, { texto, timestamp: new Date().toISOString() })
+      .catch(e=>console.error('Erro ao salvar analise IA:', e));
+  };
+  window.fbCarregarAnaliseIA = function(callback){
+    onValue(analiseIARef, (snap) => { callback(snap.val()); }, { onlyOnce: true });
   };
 
   const fbAuth = getAuth(fbApp);
@@ -1499,6 +1509,7 @@ window.onFbAuthChange = function(user){
     iniciarSyncOperacoes();
     iniciarSyncFavoritos();
     iniciarSyncAlertas();
+    setTimeout(carregarAnaliseIASalva, 1500); // aguarda Firebase inicializar
     if(typeof fetchRT==='function' && !window._rtIniciado){
       window._rtIniciado=true;
       fetchRT();
@@ -3468,12 +3479,41 @@ Seja direto, use marcadores, limite a resposta a 300 palavras.`;
       <div style="font-size:12px;line-height:1.6;color:#333">${html}</div>
       <div style="font-size:10px;color:#bbb;margin-top:10px;text-align:right">Gerado às ${ts} · Não é conselho financeiro formal</div>`;
 
+    // Salva no Firebase para carregar automaticamente na próxima visita
+    if(window.fbSalvarAnaliseIA) window.fbSalvarAnaliseIA(texto);
+
   } catch(e){
     container.innerHTML=`<div style="font-size:12px;color:#e74c3c;padding:.5rem">Erro ao gerar análise: ${e.message}</div>`;
   } finally{
     btn.disabled=false;
     btn.textContent='✨ Analisar novamente';
   }
+}
+
+// Carrega a última análise salva ao abrir a aba Consolidado
+function carregarAnaliseIASalva(){
+  if(!window.fbCarregarAnaliseIA) return;
+  window.fbCarregarAnaliseIA((dados)=>{
+    if(!dados?.texto) return;
+    const container=document.getElementById('analise-ia-container');
+    const btn=document.getElementById('btn-analise-ia');
+    if(!container) return;
+    const texto=dados.texto;
+    const html=texto
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^### (.+)$/gm,'<div style="font-weight:700;margin-top:10px;color:#534AB7">$1</div>')
+      .replace(/^## (.+)$/gm,'<div style="font-weight:700;font-size:13px;margin-top:12px">$1</div>')
+      .replace(/^# (.+)$/gm,'<div style="font-weight:700;font-size:14px;margin-top:12px">$1</div>')
+      .replace(/^[\d]+\. (.+)$/gm,'<div style="margin:4px 0;padding-left:8px">$&</div>')
+      .replace(/^[-•] (.+)$/gm,'<div style="margin:3px 0;padding-left:12px">• $1</div>')
+      .replace(/\n\n/g,'<br><br>')
+      .replace(/\n/g,'<br>');
+    const dataStr=new Date(dados.timestamp).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    container.innerHTML=`
+      <div style="font-size:12px;line-height:1.6;color:#333">${html}</div>
+      <div style="font-size:10px;color:#bbb;margin-top:10px;text-align:right">Salva em ${dataStr} · Não é conselho financeiro formal</div>`;
+    if(btn) btn.textContent='✨ Analisar novamente';
+  });
 }
 
 // ── NOTÍCIAS ─────────────────────────────────────────────
