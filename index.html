@@ -1974,7 +1974,8 @@ function calcularPosicoesCarteira(){
     const a=porAtivo[ativo];
     const pmCalculado = a.qtd>0 ? (a.custoTotal/a.qtd) : 0;
     const cadastro = ativosCadastrados[ativo];
-    const pmFinal = (cadastro && cadastro.pmManual!=null) ? cadastro.pmManual : pmCalculado;
+    // pmManual=0 é tratado como "não definido" para evitar zerar o PM
+    const pmFinal = (cadastro && cadastro.pmManual!=null && cadastro.pmManual>0) ? cadastro.pmManual : pmCalculado;
     resultado[ativo]={ qtd:a.qtd, pm:pmFinal, pmCalculado, mercado:a.mercado, pmManual: cadastro?cadastro.pmManual:null };
   });
   return resultado;
@@ -2213,7 +2214,8 @@ function posicaoAtualDoAtivo(ticker,mercado){
   });
   const pm = qtd>0 ? (custoTotal/qtd) : 0;
   const cadastro=ativosCadastrados[ticker];
-  const pmFinal=(cadastro && cadastro.pmManual!=null) ? cadastro.pmManual : pm;
+  // pmManual=0 é tratado como "não definido" (evita zerar o PM calculado acidentalmente)
+  const pmFinal=(cadastro && cadastro.pmManual!=null && cadastro.pmManual>0) ? cadastro.pmManual : pm;
   return {qtd,pm:pmFinal};
 }
 
