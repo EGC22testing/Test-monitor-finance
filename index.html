@@ -522,7 +522,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
 
   <div class="ativo">
     <div style="padding:12px 14px">
-      <div class="ds" style="margin-bottom:10px">Todos os ativos — 16/06/2026</div>
+      <div class="ds" style="margin-bottom:10px" id="tabela-data-label">Todos os ativos — carregando...</div>
       <table class="tbl">
         <thead><tr><th>Ativo</th><th>Mercado</th><th>Preço</th><th>Var. dia</th><th>Custo</th><th>Posição</th><th>Resultado</th><th>%</th></tr></thead>
         <tbody id="tabela-consolidada">
@@ -551,7 +551,7 @@ h1{font-size:19px;font-weight:600;margin-bottom:2px}
     <span id="txt-eua">Verificando status...</span>
   </div>
 
-  <div class="sec">Mercado EUA — 16/06/2026</div>
+  <div class="sec" id="sec-eua-data">Mercado EUA — carregando...</div>
   <div class="macro-row">
     <div class="mac"><div class="mac-l">S&P 500</div><div class="mac-v">7.392</div><div class="mac-s neg">-1,08% ter</div></div>
     <div class="mac"><div class="mac-l">Nasdaq</div><div class="mac-v">25.298</div><div class="mac-s neg">-1,61% ter</div></div>
@@ -3212,6 +3212,12 @@ function renderRT(){
 
   // Atualizar tabela consolidada
   updateTabela();
+  // Atualizar datas dinâmicas
+  const hoje = new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const labelTabela = document.getElementById('tabela-data-label');
+  if(labelTabela) labelTabela.textContent = 'Todos os ativos — ' + hoje;
+  const labelEUA = document.getElementById('sec-eua-data');
+  if(labelEUA) labelEUA.textContent = 'Mercado EUA — ' + hoje;
   updateRanking();
   renderAlocacao();
   if(!graficoEvolucaoPatrimonio) renderGraficoPatrimonio();
